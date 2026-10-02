@@ -1,0 +1,13 @@
+{
+  "name": "1k-mile-race",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "supabase"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
