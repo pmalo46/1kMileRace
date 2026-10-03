@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
 
@@ -9,26 +10,24 @@ import { Text } from '@/components/text';
 import { supabase } from '@/lib/supabase';
 import { Space } from '@/theme/tokens';
 
-/** Passwordless: we email a 6-digit code. Apple/Google sign-in come with the dev build. */
+/**
+ * Passwordless: we email a sign-in link that opens the app at /auth-callback.
+ * Apple/Google sign-in come with the dev build.
+ */
 export default function SignIn() {
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const sendCode = async () => {
+  const sendLink = async () => {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: Linking.createURL('auth-callback') },
+    });
     setBusy(false);
-    if (error) return Alert.alert('Could not send code', error.message);
+    if (error) return Alert.alert('Could not send the link', error.message);
     setSent(true);
-  };
-
-  const verify = async () => {
-    setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
-    setBusy(false);
-    if (error) Alert.alert('That code didn’t work', error.message);
   };
 
   return (
@@ -58,24 +57,16 @@ export default function SignIn() {
             placeholder="you@example.com"
             editable={!sent}
           />
-          {sent && (
-            <Field
-              label="6-digit code"
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              maxLength={6}
-              placeholder="123456"
-            />
-          )}
           {sent ? (
             <>
-              <Button title="Let’s go" onPress={verify} loading={busy} disabled={code.trim().length < 6} />
+              <Text variant="muted" style={{ textAlign: 'center' }}>
+                Check your email and tap the link on this phone to sign in.
+              </Text>
+              <Button title="Send it again" onPress={sendLink} loading={busy} />
               <Button title="Use a different email" variant="secondary" onPress={() => setSent(false)} />
             </>
           ) : (
-            <Button title="Email me a code" onPress={sendCode} loading={busy} disabled={!email.includes('@')} />
+            <Button title="Email me a sign-in link" onPress={sendLink} loading={busy} disabled={!email.includes('@')} />
           )}
         </View>
       </Screen>

@@ -228,6 +228,18 @@ describe("row level security", () => {
     await expect(db.as(ann, `select recompute_standing($1, $2)`, [raceId, ann])).rejects.toThrow(/permission denied/);
   });
 
+  it("exposes only the app RPCs, and only to signed-in users", async () => {
+    await db.pg.exec("set role anon");
+    try {
+      await expect(db.pg.query(`select join_race('whatever')`)).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.pg.exec("reset role");
+    }
+    await expect(db.as(ann, `select feed_on_join()`)).rejects.toThrow(/permission denied/);
+    await expect(db.as(ann, `select shares_race($1, $2)`, [bo, org])).rejects.toThrow(/does not exist/);
+    expect(await db.as(ann, `select * from race_members`)).toHaveLength(4);
+  });
+
   it("does not let members promote themselves", async () => {
     await db.as(ann, `update race_members set role = 'organizer' where user_id = auth.uid()`);
     const [m] = await db.q<{ role: string }>(`select role from race_members where race_id = $1 and user_id = $2`, [
