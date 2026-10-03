@@ -42,6 +42,8 @@ export const ActivityInput = z
     evidenceCount: z.number().int().nonnegative().default(0),
     /** Taken-at timestamp from the evidence photo's EXIF data, if readable. */
     evidenceTakenAt: z.coerce.date().optional(),
+    /** Android reported that a fix came from a mock-location (GPS spoofing) app. */
+    mockedLocation: z.boolean().optional(),
   })
   .strict();
 export type ActivityInput = z.infer<typeof ActivityInput>;

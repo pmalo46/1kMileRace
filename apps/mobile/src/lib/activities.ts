@@ -4,9 +4,11 @@ import type { ImagePickerAsset } from 'expo-image-picker';
 
 import { supabase } from './supabase';
 
-/** What the app sends for a hand-logged run; dates go over the wire as ISO strings. */
+/** What the app sends for a run (ActivityInput in @1k/core); dates go over the wire as ISO strings. */
 export interface ActivityDraft {
-  source: 'manual' | 'treadmill_manual';
+  source: 'app_gps' | 'manual' | 'treadmill_manual';
+  /** For recordings: the local recording id, so a retried upload can't double count. */
+  sourceExternalId?: string;
   type: 'run' | 'walk';
   environment: 'outdoor' | 'treadmill';
   startedAt: string;
@@ -14,8 +16,21 @@ export interface ActivityDraft {
   distanceM: number;
   movingTimeS: number;
   elapsedTimeS: number;
+  elevationGainM?: number;
+  polyline?: string;
+  mockedLocation?: boolean;
   evidenceCount: number;
   evidenceTakenAt?: string;
+}
+
+/** A failed save, with the edge function's HTTP status when there was one (409 = already logged). */
+export class LogError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+  }
 }
 
 export interface LogResult {
@@ -34,7 +49,7 @@ export async function logActivity(userId: string, draft: ActivityDraft, photo?: 
     evidencePath = `${userId}/${Date.now()}.${contentType.split('/')[1] ?? 'jpg'}`;
     const bytes = await (await fetch(photo.uri)).arrayBuffer();
     const { error } = await supabase.storage.from('evidence').upload(evidencePath, bytes, { contentType });
-    if (error) throw new Error(`Couldn’t upload the photo: ${error.message}`);
+    if (error) throw new LogError(`Couldn’t upload the photo: ${error.message}`);
   }
 
   const { data, error } = await supabase.functions.invoke<LogResult>('ingest-activity', {
@@ -42,8 +57,9 @@ export async function logActivity(userId: string, draft: ActivityDraft, photo?: 
   });
   if (error || !data) {
     if (evidencePath) await supabase.storage.from('evidence').remove([evidencePath]);
-    const body = error instanceof FunctionsHttpError ? await error.context.json().catch(() => null) : null;
-    throw new Error(body?.error ?? error?.message ?? 'Something went wrong. Try again.');
+    const response = error instanceof FunctionsHttpError ? (error.context as Response) : null;
+    const body = response ? await response.json().catch(() => null) : null;
+    throw new LogError(body?.error ?? error?.message ?? 'Something went wrong. Try again.', response?.status);
   }
   return data;
 }

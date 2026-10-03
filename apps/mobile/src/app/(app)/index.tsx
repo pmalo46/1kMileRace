@@ -6,9 +6,9 @@ import {
   paceSecondsPerMile,
   paceStatus,
 } from '@1k/core';
-import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { RefreshControl, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -19,6 +19,7 @@ import { useActiveRace } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
 import { greeting } from '@/lib/greeting';
 import { useStandings } from '@/lib/races';
+import { currentRecording, unsyncedRecordings, uploadRecording } from '@/lib/recorder';
 import { Space } from '@/theme/tokens';
 import { useTheme } from '@/theme/use-theme';
 
@@ -67,7 +68,16 @@ export default function Home() {
         </ProgressRing>
       </View>
 
-      <Button title="Log a run" onPress={() => router.push('/log-run')} />
+      <RecordingStatus />
+      <Button title="Start a run" onPress={() => router.push('/record')} />
+      <Pressable
+        onPress={() => router.push('/log-run')}
+        accessibilityRole="link"
+        style={{ alignSelf: 'center', padding: Space.xs }}>
+        <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
+          Add a run by hand
+        </Text>
+      </Pressable>
 
       {pace && (
         <Card>
@@ -121,6 +131,55 @@ export default function Home() {
       )}
     </Screen>
   );
+}
+
+/** A run still going (e.g. the app was closed mid-run) or recorded runs waiting to upload. */
+function RecordingStatus() {
+  const { session } = useAuth();
+  const { colors } = useTheme();
+  const [open, setOpen] = useState(currentRecording);
+  const [waiting, setWaiting] = useState(() => unsyncedRecordings().length);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadAll = useCallback(async () => {
+    if (!session) return;
+    setUploading(true);
+    for (const r of unsyncedRecordings()) {
+      // Failures stay queued for next time; rejections drop out of the queue.
+      await uploadRecording(session.user.id, r.id).catch(() => undefined);
+    }
+    setWaiting(unsyncedRecordings().length);
+    setUploading(false);
+  }, [session]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setOpen(currentRecording());
+      if (unsyncedRecordings().length > 0) uploadAll();
+      else setWaiting(0);
+    }, [uploadAll]),
+  );
+
+  if (open) {
+    return (
+      <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>
+        <Text variant="heading">Your {open.type} is {open.state === 'paused' ? 'paused' : 'still recording'}</Text>
+        <Button title="Back to it" onPress={() => router.push('/record')} />
+      </Card>
+    );
+  }
+  if (waiting > 0) {
+    return (
+      <Card>
+        <Text variant="heading">
+          {waiting} recorded {waiting === 1 ? 'run' : 'runs'} waiting to upload
+        </Text>
+        <Text variant="muted">Saved on your phone. They’ll upload when you’re online.</Text>
+        <Button title="Upload now" variant="secondary" onPress={uploadAll} loading={uploading} />
+      </Card>
+    );
+  }
+  return null;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

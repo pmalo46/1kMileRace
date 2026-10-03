@@ -1,3 +1,4 @@
+import { polylineLengthM } from "./track.ts";
 import { formatPace, metersToMiles, paceSecondsPerMile, SECONDS_PER_DAY } from "./units.ts";
 import type { ActivityInput, RaceRules, Verification } from "./types.ts";
 
@@ -16,7 +17,9 @@ export interface Issue {
     | "pace_too_fast"
     | "pace_too_slow"
     | "too_much_stopping"
-    | "manual_entry";
+    | "manual_entry"
+    | "mock_location"
+    | "distance_mismatch";
   severity: IssueSeverity;
   message: string;
 }
@@ -32,6 +35,9 @@ export interface Evaluation {
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 /** How far a treadmill photo's EXIF time may sit from the workout. */
 const PHOTO_WINDOW_MS = 3 * 60 * 60 * 1000;
+/** Claimed distance may exceed the measured route by this much (polyline rounding, dropped fixes). */
+const ROUTE_TOLERANCE = 1.05;
+const ROUTE_TOLERANCE_M = 50;
 
 /**
  * Applies race rules to an activity. Runs on the client for instant feedback and
@@ -96,6 +102,15 @@ export function evaluateActivity(
   }
   if (a.elapsedTimeS > 0 && a.movingTimeS / a.elapsedTimeS < rules.minMovingRatio) {
     flag("too_much_stopping", "This outing had a lot of stopped time.");
+  }
+  if (a.mockedLocation) {
+    reject("mock_location", "This run's location came from a fake-GPS app, so it can't count.");
+  }
+  if (a.polyline) {
+    const routeM = polylineLengthM(a.polyline);
+    if (routeM == null || a.distanceM > routeM * ROUTE_TOLERANCE + ROUTE_TOLERANCE_M) {
+      flag("distance_mismatch", "The distance is longer than the recorded route.");
+    }
   }
   if (a.source === "manual") {
     flag("manual_entry", "Entered by hand, so an organizer may take a look.");

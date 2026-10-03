@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { evaluateActivity } from "./rules.ts";
+import { encodePolyline } from "./track.ts";
 import { ActivityInput, DEFAULT_RACE_RULES, type RaceRules } from "./types.ts";
 import { milesToMeters } from "./units.ts";
 
@@ -19,6 +20,12 @@ function run(overrides: Partial<ActivityInput> = {}): ActivityInput {
   });
 }
 
+/** A straight 5.2 km (3.2 mi) route, a little longer than the 3.1 mi test run. */
+const route = encodePolyline([
+  { lat: 40.0, lon: -75.0 },
+  { lat: 40.0468, lon: -75.0 },
+]);
+
 const codes = (a: ActivityInput, rules: RaceRules = DEFAULT_RACE_RULES) =>
   evaluateActivity(a, rules, now).issues.map((i) => i.code);
 
@@ -34,7 +41,7 @@ describe("evaluateActivity", () => {
   it("treats imported watch workouts without a route as device-verified", () => {
     expect(evaluateActivity(run({ source: "healthkit" }), DEFAULT_RACE_RULES, now).verification).toBe("device");
     expect(
-      evaluateActivity(run({ source: "healthkit", polyline: "abc" }), DEFAULT_RACE_RULES, now).verification,
+      evaluateActivity(run({ source: "healthkit", polyline: route }), DEFAULT_RACE_RULES, now).verification,
     ).toBe("gps");
   });
 
@@ -99,5 +106,17 @@ describe("evaluateActivity", () => {
     expect(codes(run({ movingTimeS: 40 * 60 }))).toContain("bad_times");
     expect(codes(run({ startedAt: new Date("2026-09-20T12:00:00Z"), endedAt: new Date("2026-09-20T12:30:00Z") })))
       .toContain("logged_too_late");
+  });
+
+  it("rejects runs recorded with a fake-GPS app", () => {
+    const r = evaluateActivity(run({ mockedLocation: true }), DEFAULT_RACE_RULES, now);
+    expect(r.status).toBe("rejected");
+    expect(r.issues.map((i) => i.code)).toEqual(["mock_location"]);
+  });
+
+  it("flags a distance longer than the recorded route", () => {
+    expect(codes(run({ polyline: route }))).toEqual([]);
+    expect(codes(run({ polyline: route, distanceM: milesToMeters(4) }))).toEqual(["distance_mismatch"]);
+    expect(codes(run({ polyline: "not a route" }))).toEqual(["distance_mismatch"]);
   });
 });

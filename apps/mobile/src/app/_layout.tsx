@@ -3,6 +3,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
 import { AuthProvider, useAuth } from '@/lib/auth';
+// Defines the background location task; it has to exist before anything renders.
+import '@/lib/recorder';
 import { useTheme } from '@/theme/use-theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -29,6 +31,7 @@ function RootNavigator() {
           <Stack.Screen name="create-race" options={{ presentation: 'modal' }} />
           <Stack.Screen name="join" options={{ presentation: 'modal' }} />
           <Stack.Screen name="log-run" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="record" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         </Stack.Protected>
       </Stack>
     </ThemeProvider>

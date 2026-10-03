@@ -11,7 +11,6 @@ import {
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
 
@@ -19,6 +18,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { DateTimeField } from '@/components/date-time-field';
 import { Field } from '@/components/field';
+import { Logged } from '@/components/logged';
 import { Screen } from '@/components/screen';
 import { Segmented } from '@/components/segmented';
 import { Text } from '@/components/text';
@@ -32,7 +32,7 @@ type Where = 'outdoor' | 'treadmill';
 
 const num = (s: string) => (s.trim() === '' ? 0 : Number(s.replace(',', '.')));
 
-/** Log a run or walk by hand. Treadmill runs need a photo of the console. */
+/** Add a run or walk by hand: the fallback to recording. Treadmill runs need a photo of the console. */
 export default function LogRun() {
   const { session } = useAuth();
   const { colors } = useTheme();
@@ -45,7 +45,7 @@ export default function LogRun() {
   const [finishedAt, setFinishedAt] = useState(() => new Date());
   const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset>();
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<LogResult & { miles: number }>();
+  const [result, setResult] = useState<LogResult>();
 
   const now = new Date();
   const earliest = new Date(now.getTime() - DEFAULT_RACE_RULES.lateLogDays * SECONDS_PER_DAY * 1000);
@@ -96,7 +96,7 @@ export default function LogRun() {
     try {
       const res = await logActivity(session.user.id, draft, treadmill ? photo : undefined);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setResult({ ...res, miles: num(miles) });
+      setResult(res);
     } catch (e) {
       Alert.alert('That didn’t save', e instanceof Error ? e.message : String(e));
     } finally {
@@ -104,13 +104,17 @@ export default function LogRun() {
     }
   };
 
-  if (result) return <Logged result={result} />;
+  if (result) return <Logged result={result} miles={String(num(miles))} />;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen>
         <Text variant="heading" size={28}>
-          Log a {kind}
+          Add a {kind} by hand
+        </Text>
+        <Text variant="muted">
+          Recording with GPS is the best way to log. Runs added by hand are marked as entered by hand, and organizers
+          may review them.
         </Text>
         <Segmented
           options={[
@@ -200,28 +204,5 @@ export default function LogRun() {
         />
       </Screen>
     </KeyboardAvoidingView>
-  );
-}
-
-function Logged({ result }: { result: LogResult & { miles: number } }) {
-  const races = result.countedIn.map((c) => c.race).join(', ');
-  return (
-    <Screen scroll={false}>
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: Space.md }}>
-        <Text variant="display" size={64}>
-          +{result.miles}
-        </Text>
-        <Text variant="heading" style={{ textAlign: 'center' }}>
-          {result.miles === 1 ? 'mile' : 'miles'} closer. Nice work.
-        </Text>
-        <Text variant="muted" style={{ textAlign: 'center' }}>
-          {races
-            ? `Counted toward ${races}.`
-            : 'Saved, but it isn’t inside any of your races’ dates, so it doesn’t count toward one yet.'}
-          {result.evaluation.status === 'flagged' ? ' An organizer may take a look; it counts in the meantime.' : ''}
-        </Text>
-      </View>
-      <Button title="Done" onPress={() => router.back()} />
-    </Screen>
   );
 }

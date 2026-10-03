@@ -42,7 +42,16 @@ cd apps/mobile
 npx expo start
 ```
 
-Running on a simulator needs Xcode (iOS) or Android Studio. Once GPS recording and Apple Health / Health Connect land, the app needs a development build (`npx eas-cli build --profile development`) instead of Expo Go.
+Expo Go works for most screens, and records runs only while the app is open with the screen on. For recording with the screen locked (and, later, Apple Health / Health Connect), use a development build:
+
+```bash
+cd apps/mobile
+npx eas-cli@latest login
+npx eas-cli@latest init                # first time only: links the app to your Expo account
+npx eas-cli@latest build --profile development --platform android
+```
+
+Install the APK it produces on your phone, then `npx expo start` and open the 1K Miles app (press `s` in the terminal to switch between the development build and Expo Go).
 
 ## Status
 
@@ -52,6 +61,8 @@ Phase 0 (foundations) is in place:
 - app shell: email and password sign-in, home with progress ring and pace-to-finish, live leaderboards (distance and time), create race, join race
 
 Phase 1 so far:
-- log a run or walk by hand (outdoors, or treadmill with a console photo); the `ingest-activity` edge function applies the shared rules engine and dedup before saving
+- record runs and walks with GPS (the main way to log): auto-pause, route sketch, background tracking in development builds, stored on the phone until uploaded; the server re-measures the route and rejects mock-location runs
+- add a run by hand as a fallback (outdoors, or treadmill with a console photo); marked for review
+- the `ingest-activity` edge function applies the shared rules engine and dedup before saving
 
-Next up (Phase 1): in-app GPS recording, the social feed with cheers and comments, and push notifications.
+Next up: Health Connect / Apple Health import (watch runs, including treadmill), the social feed with cheers and comments, and push notifications.
