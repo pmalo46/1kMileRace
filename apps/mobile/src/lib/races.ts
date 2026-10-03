@@ -48,8 +48,10 @@ export function useStandings(raceId: string | undefined) {
   useEffect(() => {
     if (!raceId) return;
     refresh();
+    // supabase.channel() returns the existing channel for a topic, so screens that both
+    // watch the same race (Home and Leaderboard) each need their own topic.
     const channel = supabase
-      .channel(`standings:${raceId}`)
+      .channel(`standings:${raceId}:${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'race_standings', filter: `race_id=eq.${raceId}` },
