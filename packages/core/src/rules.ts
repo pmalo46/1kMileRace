@@ -1,5 +1,5 @@
-import { formatPace, metersToMiles, paceSecondsPerMile, SECONDS_PER_DAY } from "./units";
-import type { ActivityInput, RaceRules, Verification } from "./types";
+import { formatPace, metersToMiles, paceSecondsPerMile, SECONDS_PER_DAY } from "./units.ts";
+import type { ActivityInput, RaceRules, Verification } from "./types.ts";
 
 export type IssueSeverity = "reject" | "flag";
 
@@ -15,7 +15,8 @@ export interface Issue {
     | "logged_too_late"
     | "pace_too_fast"
     | "pace_too_slow"
-    | "too_much_stopping";
+    | "too_much_stopping"
+    | "manual_entry";
   severity: IssueSeverity;
   message: string;
 }
@@ -96,6 +97,9 @@ export function evaluateActivity(
   if (a.elapsedTimeS > 0 && a.movingTimeS / a.elapsedTimeS < rules.minMovingRatio) {
     flag("too_much_stopping", "This outing had a lot of stopped time.");
   }
+  if (a.source === "manual") {
+    flag("manual_entry", "Entered by hand, so an organizer may take a look.");
+  }
 
   if (issues.some((i) => i.severity === "reject")) {
     return { status: "rejected", verification: "rejected", issues };
@@ -110,6 +114,7 @@ export function evaluateActivity(
 
 function baseVerification(a: ActivityInput): Verification {
   if (a.environment === "treadmill") return "photo";
+  if (a.source === "manual") return "pending";
   if (a.source === "app_gps" || a.polyline) return "gps";
   return "device";
 }

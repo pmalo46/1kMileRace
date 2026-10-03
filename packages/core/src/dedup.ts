@@ -1,4 +1,4 @@
-import type { ActivitySource } from "./types";
+import type { ActivitySource } from "./types.ts";
 
 export interface TimedActivity {
   id?: string;
@@ -29,7 +29,7 @@ export function sourceRank(a: TimedActivity): number {
   if ((a.source === "healthkit" || a.source === "health_connect" || a.source === "polar") && a.polyline) return 3;
   if (a.source === "file") return 2;
   if (a.source === "healthkit" || a.source === "health_connect" || a.source === "polar") return 1;
-  return 0; // manual treadmill
+  return 0; // typed in by hand: treadmill or manual
 }
 
 export type DedupDecision =

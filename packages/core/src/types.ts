@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { METERS_PER_MILE } from "./units";
+import { METERS_PER_MILE } from "./units.ts";
 
 export const ActivitySource = z.enum([
   "app_gps",
@@ -8,6 +8,8 @@ export const ActivitySource = z.enum([
   "file",
   "treadmill_manual",
   "polar",
+  /** Outdoor run or walk typed in by hand (until GPS recording and health sync land). */
+  "manual",
 ]);
 export type ActivitySource = z.infer<typeof ActivitySource>;
 

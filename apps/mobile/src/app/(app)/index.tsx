@@ -67,6 +67,8 @@ export default function Home() {
         </ProgressRing>
       </View>
 
+      <Button title="Log a run" onPress={() => router.push('/log-run')} />
+
       {pace && (
         <Card>
           {pace.finished ? (

@@ -260,3 +260,79 @@ describe("row level security", () => {
     expect(await db.as(ann, `select * from comments`)).toHaveLength(1);
   });
 });
+
+describe("logging runs", () => {
+  const row = (overrides: Record<string, unknown> = {}) => ({
+    source: "treadmill_manual",
+    type: "run",
+    environment: "treadmill",
+    started_at: "2026-03-01T12:00:00Z",
+    ended_at: "2026-03-01T12:30:00Z",
+    distance_m: 3 * MILE,
+    moving_time_s: 1800,
+    elapsed_time_s: 1800,
+    verification: "pending",
+    flags: [],
+    ...overrides,
+  });
+  const ingest = (user: string, activity: object, evidence: string | null = null, replaces: string[] = []) =>
+    db.q<{ ingest_activity: { id: string } }>(`select to_jsonb(ingest_activity($1, $2, $3, $4)) as ingest_activity`, [
+      user,
+      JSON.stringify(activity),
+      replaces,
+      evidence,
+    ]);
+
+  it("writes the activity and its evidence, and counts it toward standings", async () => {
+    const [res] = await ingest(ann, row(), `${ann}/console.jpg`);
+    const id = res!.ingest_activity.id;
+    const [ev] = await db.q<{ storage_path: string }>(`select storage_path from activity_evidence where activity_id = $1`, [id]);
+    expect(ev!.storage_path).toBe(`${ann}/console.jpg`);
+    expect((await standing(ann))!.counted_distance_m).toBeCloseTo(3 * MILE);
+  });
+
+  it("accepts hand-entered outdoor runs", async () => {
+    await ingest(ann, row({ source: "manual", environment: "outdoor" }));
+    expect((await standing(ann))!.activity_count).toBe(1);
+  });
+
+  it("replaces lower-quality copies in the same transaction", async () => {
+    const [first] = await ingest(ann, row({ source: "manual", environment: "outdoor" }));
+    await ingest(ann, row({ source: "app_gps", environment: "outdoor", verification: "gps" }), null, [
+      first!.ingest_activity.id,
+    ]);
+    const s = await standing(ann);
+    expect(s!.activity_count).toBe(1);
+    expect(s!.counted_distance_m).toBeCloseTo(3 * MILE);
+  });
+
+  it("refuses evidence from someone else's folder", async () => {
+    await expect(ingest(ann, row(), `${bo}/console.jpg`)).rejects.toThrow(/own folder/);
+    expect(await db.q(`select * from activities`)).toHaveLength(0);
+  });
+
+  it("is not callable by signed-in users", async () => {
+    await expect(
+      db.as(ann, `select ingest_activity(auth.uid(), $1::jsonb)`, [JSON.stringify(row())]),
+    ).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("evidence storage", () => {
+  const upload = (user: string, name: string) =>
+    db.as(user, `insert into storage.objects (bucket_id, name) values ('evidence', $1)`, [name]);
+  const visible = (user: string) => db.as<{ name: string }>(user, `select name from storage.objects`);
+
+  it("lets runners upload only into their own folder", async () => {
+    await upload(ann, `${ann}/console.jpg`);
+    await expect(upload(ann, `${bo}/console.jpg`)).rejects.toThrow(/row-level security/);
+  });
+
+  it("shows photos to their owner and the race's organizers, not other runners", async () => {
+    await upload(ann, `${ann}/console.jpg`);
+    expect(await visible(ann)).toHaveLength(1);
+    expect(await visible(org)).toHaveLength(1);
+    expect(await visible(bo)).toHaveLength(0);
+    expect(await visible(outsider)).toHaveLength(0);
+  });
+});

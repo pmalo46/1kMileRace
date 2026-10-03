@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { evaluateActivity } from "./rules";
-import { ActivityInput, DEFAULT_RACE_RULES, type RaceRules } from "./types";
-import { milesToMeters } from "./units";
+import { evaluateActivity } from "./rules.ts";
+import { ActivityInput, DEFAULT_RACE_RULES, type RaceRules } from "./types.ts";
+import { milesToMeters } from "./units.ts";
 
 const now = new Date("2026-10-02T18:00:00Z");
 

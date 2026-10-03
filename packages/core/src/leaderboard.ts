@@ -1,4 +1,4 @@
-import { projectedGoalMovingTimeS } from "./progress";
+import { projectedGoalMovingTimeS } from "./progress.ts";
 
 export interface StandingLike {
   user_id: string;

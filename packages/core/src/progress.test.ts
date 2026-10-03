@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { isResultOfficial, paceStatus, projectedGoalMovingTimeS } from "./progress";
-import { DEFAULT_GOAL_M } from "./types";
-import { formatDuration, formatMiles, formatPace, metersToMiles, milesToMeters } from "./units";
+import { isResultOfficial, paceStatus, projectedGoalMovingTimeS } from "./progress.ts";
+import { DEFAULT_GOAL_M } from "./types.ts";
+import { formatDuration, formatMiles, formatPace, metersToMiles, milesToMeters } from "./units.ts";
 
 const race = {
   startsAt: new Date("2026-01-01T05:00:00Z"),

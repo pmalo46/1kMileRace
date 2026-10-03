@@ -1,4 +1,4 @@
-import { SECONDS_PER_DAY } from "./units";
+import { SECONDS_PER_DAY } from "./units.ts";
 
 export interface RaceWindow {
   startsAt: Date;

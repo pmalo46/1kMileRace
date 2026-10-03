@@ -32,7 +32,8 @@ npm run typecheck
 1. Create a project at supabase.com.
 2. Apply the schema: `npx supabase link --project-ref <ref>` then `npx supabase db push`.
 3. Push auth settings: `npx supabase config push`. Email confirmation is off, so the app's email and password sign-in never sends email.
-4. Copy `apps/mobile/.env.example` to `apps/mobile/.env` and fill in the URL and publishable key.
+4. Deploy the edge function: `npx supabase functions deploy ingest-activity`.
+5. Copy `apps/mobile/.env.example` to `apps/mobile/.env` and fill in the URL and publishable key.
 
 ### Mobile app
 
@@ -50,4 +51,7 @@ Phase 0 (foundations) is in place:
 - schema with standings, milestones, feed, review and RLS, with tests
 - app shell: email and password sign-in, home with progress ring and pace-to-finish, live leaderboards (distance and time), create race, join race
 
-Next up (Phase 1): in-app GPS recording, the `ingest-activity` edge function, treadmill logging with photo, the social feed with cheers and comments, and push notifications.
+Phase 1 so far:
+- log a run or walk by hand (outdoors, or treadmill with a console photo); the `ingest-activity` edge function applies the shared rules engine and dedup before saving
+
+Next up (Phase 1): in-app GPS recording, the social feed with cheers and comments, and push notifications.

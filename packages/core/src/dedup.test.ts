@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { overlapRatio, resolveDuplicates, type TimedActivity } from "./dedup";
+import { overlapRatio, resolveDuplicates, type TimedActivity } from "./dedup.ts";
 
 const at = (h: number, m = 0) => new Date(Date.UTC(2026, 9, 2, h, m));
 const act = (source: TimedActivity["source"], start: Date, end: Date, polyline?: string): TimedActivity => ({

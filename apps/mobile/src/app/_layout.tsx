@@ -28,6 +28,7 @@ function RootNavigator() {
           <Stack.Screen name="(app)" />
           <Stack.Screen name="create-race" options={{ presentation: 'modal' }} />
           <Stack.Screen name="join" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="log-run" options={{ presentation: 'modal' }} />
         </Stack.Protected>
       </Stack>
     </ThemeProvider>

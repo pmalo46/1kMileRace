@@ -36,7 +36,15 @@
             "backgroundColor": "#120D1F"
           }
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a photo of the treadmill console to back up the miles you log.",
+          "cameraPermission": "Take a photo of the treadmill console to back up the miles you log."
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

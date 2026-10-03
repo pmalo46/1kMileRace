@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { distanceBoard, timeBoard, type StandingLike } from "./leaderboard";
-import { DEFAULT_GOAL_M } from "./types";
-import { milesToMeters } from "./units";
+import { distanceBoard, timeBoard, type StandingLike } from "./leaderboard.ts";
+import { DEFAULT_GOAL_M } from "./types.ts";
+import { milesToMeters } from "./units.ts";
 
 const s = (
   user_id: string,
