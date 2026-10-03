@@ -15,8 +15,6 @@ export const supabase = createClient(url, key, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
-    // Sign-in links come back as ?code=... and only work on the device that asked for them.
-    flowType: 'pkce',
   },
 });
 

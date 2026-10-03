@@ -21,7 +21,6 @@ function RootNavigator() {
     <ThemeProvider
       value={{ ...base, colors: { ...base.colors, background: colors.background, primary: colors.accent } }}>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="auth-callback" />
         <Stack.Protected guard={!session}>
           <Stack.Screen name="sign-in" />
         </Stack.Protected>
