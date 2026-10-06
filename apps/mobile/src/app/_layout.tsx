@@ -31,6 +31,7 @@ function RootNavigator() {
           <Stack.Screen name="create-race" options={{ presentation: 'modal' }} />
           <Stack.Screen name="join" options={{ presentation: 'modal' }} />
           <Stack.Screen name="log-run" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="comments" options={{ presentation: 'modal' }} />
           <Stack.Screen name="record" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         </Stack.Protected>
       </Stack>

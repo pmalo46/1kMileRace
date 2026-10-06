@@ -26,3 +26,24 @@ export interface Standing {
   time_rank: number | null;
   profile: { display_name: string; avatar_url: string | null } | null;
 }
+
+export interface FeedItem {
+  id: string;
+  type: 'activity' | 'milestone' | 'finish' | 'joined';
+  actor_id: string;
+  payload: { miles?: number };
+  created_at: string;
+  actor: { display_name: string; avatar_url: string | null } | null;
+  activity: { type: 'run' | 'walk'; environment: 'outdoor' | 'treadmill'; distance_m: number; moving_time_s: number } | null;
+  cheers: { user_id: string; emoji: string }[];
+  comments: { count: number }[];
+}
+
+export interface Comment {
+  id: string;
+  feed_item_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  author: { display_name: string } | null;
+}

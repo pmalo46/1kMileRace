@@ -64,5 +64,6 @@ Phase 1 so far:
 - record runs and walks with GPS (the main way to log): auto-pause, route sketch, background tracking in development builds, stored on the phone until uploaded; the server re-measures the route and rejects mock-location runs
 - add a run by hand as a fallback (outdoors, or treadmill with a console photo); marked for review
 - the `ingest-activity` edge function applies the shared rules engine and dedup before saving
+- a live race feed of runs, milestones, finishes and new members, with emoji cheers and comments
 
-Next up: Health Connect / Apple Health import (watch runs, including treadmill), the social feed with cheers and comments, and push notifications.
+Next up: push notifications (cheers, comments, milestones), then Health Connect / Apple Health import (watch runs, including treadmill).
