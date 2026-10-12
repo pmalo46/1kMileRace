@@ -23,6 +23,12 @@ const plan = (a: ActivityInput, existing: Parameters<typeof planIngest>[1] = [])
   planIngest(a, existing, DEFAULT_RACE_RULES, now);
 
 describe("planIngest", () => {
+  it("inserts a run under the minimum when it finishes the runner's race", () => {
+    const short = input({ distanceM: milesToMeters(0.5), movingTimeS: 5 * 60, elapsedTimeS: 5 * 60 });
+    expect(plan(short).kind).toBe("rejected");
+    expect(planIngest(short, [], DEFAULT_RACE_RULES, now, { toFinishM: milesToMeters(0.4) }).kind).toBe("insert");
+  });
+
   it("inserts a hand-entered outdoor run as pending review", () => {
     const p = plan(input());
     expect(p.kind).toBe("insert");

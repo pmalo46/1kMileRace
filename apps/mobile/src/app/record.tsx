@@ -4,6 +4,7 @@ import {
   formatMiles,
   formatPace,
   MAX_ACCURACY_M,
+  meetsMinimumDistance,
   paceSecondsPerMile,
   summarizeTrack,
   type TrackPoint,
@@ -21,6 +22,7 @@ import { RouteSketch } from '@/components/route-sketch';
 import { Screen } from '@/components/screen';
 import { Segmented } from '@/components/segmented';
 import { Text } from '@/components/text';
+import { useToFinishM } from '@/lib/active-race';
 import { LogError, type LogResult } from '@/lib/activities';
 import { useAuth } from '@/lib/auth';
 import {
@@ -47,6 +49,7 @@ const KEEP_AWAKE_TAG = 'recording';
 /** Record a run or walk with GPS: the main way miles get logged. */
 export default function Record() {
   const { session } = useAuth();
+  const toFinishM = useToFinishM();
   const [type, setType] = useState<Recording['type']>('run');
   const [rec, setRec] = useState<Recording | null>(() => currentRecording());
   const [mode, setMode] = useState<TrackingMode | null>(null);
@@ -151,7 +154,7 @@ export default function Record() {
 
   const finish = () => {
     if (!rec) return;
-    const short = summary.distanceM < DEFAULT_RACE_RULES.minDistanceM;
+    const short = !meetsMinimumDistance(summary.distanceM, DEFAULT_RACE_RULES, { toFinishM });
     if (short) {
       return Alert.alert(
         'So close!',

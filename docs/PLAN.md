@@ -75,7 +75,7 @@ All distances are stored in **meters**, times in **seconds**, and timestamps as 
 
 **How standings get computed:** an activity enters through the `ingest-activity` edge function, which validates it with the rules engine, deduplicates it and inserts it. A trigger then calls `recompute_standing(race_id, user_id)`, and Realtime pushes the updated standings rows to everyone watching.
 
-**Finish order** uses the `ended_at` of the crossing activity, i.e. when the miles were actually run, not when they were uploaded. Results stay **provisional** until the race's late-log window (e.g. 7 days) has passed. That handles watches that sync late.
+**Finish order** uses the moment within the crossing activity when the goal was reached (placed by distance, like its moving time), i.e. when the miles were actually run, not when they were uploaded or when that run ended. Results stay **provisional** until the race's late-log window (e.g. 7 days) has passed. That handles watches that sync late.
 
 ---
 
@@ -83,7 +83,7 @@ All distances are stored in **meters**, times in **seconds**, and timestamps as 
 
 The same code runs on the client (instant feedback while logging) and on the server (the server's verdict is final).
 
-- **At least 1.0 mile** per activity. A shorter activity is rejected, with a friendly message.
+- **At least 1.0 mile** per activity. A shorter activity is rejected, with a friendly message. The one exception is the run that carries a runner across the finish line, which counts at any length.
 - **Only dedicated workouts count.** Imports accept only *workout sessions* (HKWorkout or ExerciseSession of type running or walking), never passive step counts. A trip around the grocery store never becomes a workout unless someone starts one.
 - **Sanity checks** flag an activity for marshal review instead of rejecting it:
   - pace faster than about 4:00/mi (could be cycling or driving)

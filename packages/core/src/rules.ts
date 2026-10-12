@@ -38,6 +38,24 @@ const PHOTO_WINDOW_MS = 3 * 60 * 60 * 1000;
 /** Claimed distance may exceed the measured route by this much (polyline rounding, dropped fixes). */
 const ROUTE_TOLERANCE = 1.05;
 const ROUTE_TOLERANCE_M = 50;
+/** Slack when comparing a run to the distance left, matching the standings calculation. */
+const FINISH_TOLERANCE_M = 0.5;
+
+/** What the rules need to know about the runner beyond the activity itself. */
+export interface RunnerContext {
+  /**
+   * The least distance the runner still needs to finish a race this activity falls in.
+   * A run that covers it counts even when it's under the minimum distance.
+   */
+  toFinishM?: number;
+}
+
+/** Whether a distance is enough to count: the race minimum, or whatever finishes the runner's race. */
+export function meetsMinimumDistance(distanceM: number, rules: RaceRules, runner: RunnerContext = {}): boolean {
+  const toFinishM = runner.toFinishM ?? 0;
+  const crossesTheLine = toFinishM > 0 && distanceM >= toFinishM - FINISH_TOLERANCE_M;
+  return distanceM >= rules.minDistanceM || crossesTheLine;
+}
 
 /**
  * Applies race rules to an activity. Runs on the client for instant feedback and
@@ -47,6 +65,7 @@ export function evaluateActivity(
   a: ActivityInput,
   rules: RaceRules,
   now: Date = new Date(),
+  runner: RunnerContext = {},
 ): Evaluation {
   const issues: Issue[] = [];
   const reject = (code: Issue["code"], message: string) =>
@@ -68,7 +87,7 @@ export function evaluateActivity(
     );
   }
 
-  if (a.distanceM < rules.minDistanceM) {
+  if (!meetsMinimumDistance(a.distanceM, rules, runner)) {
     reject(
       "too_short",
       `So close! Activities need at least ${metersToMiles(rules.minDistanceM).toFixed(1)} mile to count.`,

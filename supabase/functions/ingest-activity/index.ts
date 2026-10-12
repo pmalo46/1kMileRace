@@ -50,6 +50,21 @@ Deno.serve(async (req) => {
     .gt("ended_at", activity.startedAt.toISOString());
   if (overlapError) return json(500, { error: overlapError.message });
 
+  // A run that carries the runner across a finish line counts whatever its length.
+  const { data: standings, error: standingsError } = await admin
+    .from("race_standings")
+    .select("counted_distance_m, race:races(goal_m, starts_at, ends_at)")
+    .eq("user_id", user.id)
+    .is("finished_at", null);
+  if (standingsError) return json(500, { error: standingsError.message });
+  const startedAt = activity.startedAt.getTime();
+  const remaining = (standings ?? []).flatMap((s) => {
+    const race = s.race as unknown as { goal_m: number; starts_at: string; ends_at: string } | null;
+    const inWindow = race && startedAt >= Date.parse(race.starts_at) && startedAt < Date.parse(race.ends_at);
+    return inWindow ? [race.goal_m - s.counted_distance_m] : [];
+  });
+  const toFinishM = remaining.length > 0 ? Math.min(...remaining) : undefined;
+
   // Per-race rule overrides (races.rules) aren't applied yet; every race uses the defaults.
   const plan = planIngest(
     activity,
@@ -61,6 +76,8 @@ Deno.serve(async (req) => {
       polyline: o.polyline,
     })),
     DEFAULT_RACE_RULES,
+    new Date(),
+    { toFinishM },
   );
 
   if (plan.kind === "rejected") {

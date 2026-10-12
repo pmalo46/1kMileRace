@@ -52,6 +52,24 @@ describe("evaluateActivity", () => {
     expect(codes(run({ distanceM: milesToMeters(1), movingTimeS: 10 * 60 }))).not.toContain("too_short");
   });
 
+  it("waives the minimum for the run that crosses the finish line", () => {
+    // 0.8 miles to go, as at 999.2 of 1,000.
+    const short = run({ distanceM: milesToMeters(0.8), movingTimeS: 8 * 60, elapsedTimeS: 8 * 60 });
+    const evaluate = (a: ActivityInput, toFinishM?: number) =>
+      evaluateActivity(a, DEFAULT_RACE_RULES, now, { toFinishM });
+
+    expect(evaluate(short, milesToMeters(0.8)).status).toBe("accepted");
+    // Not far enough to finish, so the minimum still applies.
+    expect(evaluate(run({ distanceM: milesToMeters(0.7), movingTimeS: 7 * 60 }), milesToMeters(0.8)).status).toBe(
+      "rejected",
+    );
+    // Already finished, or not in a race at all.
+    expect(evaluate(short, 0).status).toBe("rejected");
+    expect(evaluate(short).status).toBe("rejected");
+    // The other rules still apply to a finishing run.
+    expect(evaluate({ ...short, mockedLocation: true }, milesToMeters(0.8)).status).toBe("rejected");
+  });
+
   it("flags implausibly fast and slow paces without rejecting them", () => {
     const fast = evaluateActivity(run({ movingTimeS: 6 * 60, elapsedTimeS: 6 * 60 }), DEFAULT_RACE_RULES, now);
     expect(fast.status).toBe("flagged");

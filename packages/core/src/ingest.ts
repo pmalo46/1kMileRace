@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { resolveDuplicates, type TimedActivity } from "./dedup.ts";
-import { evaluateActivity, type Evaluation } from "./rules.ts";
+import { evaluateActivity, type Evaluation, type RunnerContext } from "./rules.ts";
 import { ActivityInput, type RaceRules, type Verification } from "./types.ts";
 
 /** Body of a POST to the ingest-activity edge function. */
@@ -47,8 +47,9 @@ export function planIngest(
   existing: TimedActivity[],
   rules: RaceRules,
   now: Date = new Date(),
+  runner: RunnerContext = {},
 ): IngestPlan {
-  const evaluation = evaluateActivity(a, rules, now);
+  const evaluation = evaluateActivity(a, rules, now, runner);
   if (evaluation.status === "rejected") return { kind: "rejected", evaluation };
 
   const dedup = resolveDuplicates(a, existing);

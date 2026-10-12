@@ -122,6 +122,26 @@ describe("standings", () => {
     expect(a!.time_rank).toBe(2);
   });
 
+  it("stops the finish clock at the line, not at the end of the crossing run", async () => {
+    await logBulk(ann, "2026-02-01T12:00:00Z", 990);
+    await logBulk(bo, "2026-02-01T12:00:00Z", 990);
+    // Ann crosses 1,000 halfway through a 20-mile run (12:00 to 14:40), so at 13:20.
+    await logRun(ann, "2026-06-01T12:00:00Z", 20, 8);
+    // Bo starts later and crosses at the end of a 10-mile run, at 13:30, before Ann stops.
+    await logRun(bo, "2026-06-01T12:10:00Z", 10, 8);
+    const a = await standing(ann);
+    const b = await standing(bo);
+    expect(a!.finished_at!.toISOString()).toBe("2026-06-01T13:20:00.000Z");
+    expect(b!.finished_at!.toISOString()).toBe("2026-06-01T13:30:00.000Z");
+    expect(a!.finish_rank).toBe(1);
+    expect(b!.finish_rank).toBe(2);
+    const [m] = await db.q<{ reached_at: Date }>(
+      `select reached_at from milestones where race_id = $1 and user_id = $2 and miles = 1000`,
+      [raceId, ann],
+    );
+    expect(m!.reached_at.toISOString()).toBe("2026-06-01T13:20:00.000Z");
+  });
+
   it("gives supporters no standing", async () => {
     await logRun(fan, "2026-03-01T12:00:00Z", 5);
     expect(await standing(fan)).toBeUndefined();

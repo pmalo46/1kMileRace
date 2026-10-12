@@ -22,6 +22,7 @@ import { Logged } from '@/components/logged';
 import { Screen } from '@/components/screen';
 import { Segmented } from '@/components/segmented';
 import { Text } from '@/components/text';
+import { useToFinishM } from '@/lib/active-race';
 import { logActivity, photoTakenAt, type ActivityDraft, type LogResult } from '@/lib/activities';
 import { useAuth } from '@/lib/auth';
 import { Radius, Space } from '@/theme/tokens';
@@ -36,6 +37,7 @@ const num = (s: string) => (s.trim() === '' ? 0 : Number(s.replace(',', '.')));
 export default function LogRun() {
   const { session } = useAuth();
   const { colors } = useTheme();
+  const toFinishM = useToFinishM();
   const [kind, setKind] = useState<Kind>('run');
   const [where, setWhere] = useState<Where>('outdoor');
   const [miles, setMiles] = useState('');
@@ -74,9 +76,9 @@ export default function LogRun() {
   const evaluation = useMemo(() => {
     if (!draft) return null;
     const parsed = ActivityInput.safeParse(draft);
-    return parsed.success ? evaluateActivity(parsed.data, DEFAULT_RACE_RULES) : null;
+    return parsed.success ? evaluateActivity(parsed.data, DEFAULT_RACE_RULES, new Date(), { toFinishM }) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(draft)]);
+  }, [JSON.stringify(draft), toFinishM]);
   const blockers = evaluation?.issues.filter((i) => i.severity === 'reject') ?? [];
   const notes = evaluation?.issues.filter((i) => i.severity === 'flag') ?? [];
 
