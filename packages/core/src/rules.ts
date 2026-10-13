@@ -101,7 +101,8 @@ export function evaluateActivity(
   if (isTreadmill && !rules.allowTreadmill) {
     reject("treadmill_not_allowed", "Treadmill miles don't count in this race.");
   }
-  if (isTreadmill && rules.requireTreadmillPhoto && a.evidenceCount === 0) {
+  // A watch's own record of a treadmill run stands in for the console photo.
+  if (isTreadmill && isHandEntered(a) && rules.requireTreadmillPhoto && a.evidenceCount === 0) {
     reject("treadmill_photo_required", "Add a photo of the treadmill console showing distance and time.");
   }
   if (isTreadmill && a.evidenceTakenAt) {
@@ -146,8 +147,10 @@ export function evaluateActivity(
   return { status: "accepted", verification, issues };
 }
 
+const isHandEntered = (a: ActivityInput) => a.source === "manual" || a.source === "treadmill_manual";
+
 function baseVerification(a: ActivityInput): Verification {
-  if (a.environment === "treadmill") return "photo";
+  if (a.environment === "treadmill" && isHandEntered(a)) return "photo";
   if (a.source === "manual") return "pending";
   if (a.source === "app_gps" || a.polyline) return "gps";
   return "device";

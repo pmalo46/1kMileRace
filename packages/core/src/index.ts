@@ -8,3 +8,4 @@ export * from "./ingest.ts";
 export * from "./track.ts";
 export * from "./push.ts";
 export * from "./quotes.ts";
+export * from "./health.ts";

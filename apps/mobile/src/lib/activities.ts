@@ -6,8 +6,8 @@ import { supabase } from './supabase';
 
 /** What the app sends for a run (ActivityInput in @1k/core); dates go over the wire as ISO strings. */
 export interface ActivityDraft {
-  source: 'app_gps' | 'manual' | 'treadmill_manual';
-  /** For recordings: the local recording id, so a retried upload can't double count. */
+  source: 'app_gps' | 'manual' | 'treadmill_manual' | 'health_connect';
+  /** The recording's or health record's own id, so a retried upload can't double count. */
   sourceExternalId?: string;
   type: 'run' | 'walk';
   environment: 'outdoor' | 'treadmill';
@@ -17,6 +17,7 @@ export interface ActivityDraft {
   movingTimeS: number;
   elapsedTimeS: number;
   elevationGainM?: number;
+  deviceName?: string;
   polyline?: string;
   mockedLocation?: boolean;
   evidenceCount: number;
