@@ -161,13 +161,15 @@ describe("milestones and feed", () => {
       `select miles from milestones where race_id = $1 and user_id = $2 order by miles`,
       [raceId, ann],
     );
-    expect(ms.map((m) => m.miles)).toEqual([1, 100, 250, 500, 750, 900, 1000]);
+    expect(ms.map((m) => m.miles)).toEqual([
+      1, 100, 200, 250, 300, 400, 500, 600, 700, 750, 800, 900, 950, 975, 990, 995, 1000,
+    ]);
     const feed = await db.q<{ type: string }>(
       `select type from feed_items where race_id = $1 and actor_id = $2 and type in ('milestone','finish')`,
       [raceId, ann],
     );
     expect(feed.filter((f) => f.type === "finish")).toHaveLength(1);
-    expect(feed.filter((f) => f.type === "milestone")).toHaveLength(6);
+    expect(feed.filter((f) => f.type === "milestone")).toHaveLength(16);
   });
 
   it("creates one feed item per activity and a joined item per member", async () => {

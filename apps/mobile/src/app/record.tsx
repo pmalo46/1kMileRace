@@ -6,7 +6,9 @@ import {
   MAX_ACCURACY_M,
   meetsMinimumDistance,
   metersToMiles,
+  milestoneQuote,
   paceSecondsPerMile,
+  runQuote,
   summarizeTrack,
   type TrackPoint,
 } from '@1k/core';
@@ -20,6 +22,7 @@ import { Alert, Linking, Pressable, View } from 'react-native';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Logged } from '@/components/logged';
+import { Quote } from '@/components/quote';
 import { RouteSketch } from '@/components/route-sketch';
 import { Screen } from '@/components/screen';
 import { Segmented } from '@/components/segmented';
@@ -234,12 +237,14 @@ function Ready({
   onStart: () => void;
   busy: boolean;
 }) {
+  const [quote] = useState(() => runQuote('before', Date.now()));
   return (
     <Screen scroll={false}>
       <View style={{ flex: 1, gap: Space.md }}>
         <Text variant="heading" size={28}>
           Ready when you are
         </Text>
+        <Quote quote={quote} />
         <Segmented
           options={[
             { value: 'run', label: 'Run' },
@@ -342,7 +347,8 @@ function Active(props: {
 /** Takes over the screen the moment a run in progress reaches the race goal. */
 function Celebration({ onKeepGoing, onFinish }: { onKeepGoing: () => void; onFinish: () => void }) {
   const { race } = useActiveRace();
-  const goal = race ? Math.round(metersToMiles(race.goal_m)).toLocaleString() : null;
+  const goalMiles = race ? Math.round(metersToMiles(race.goal_m)) : null;
+  const goal = goalMiles?.toLocaleString() ?? null;
 
   useEffect(() => {
     const buzz = () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -362,7 +368,13 @@ function Celebration({ onKeepGoing, onFinish }: { onKeepGoing: () => void; onFin
           <Text variant="heading" size={28} style={{ color: '#fff', textAlign: 'center' }}>
             {goal ? 'miles. You did it.' : 'You did it.'}
           </Text>
-          <Text style={{ color: '#fff', textAlign: 'center', marginTop: Space.md }}>
+          <Quote
+            quote={milestoneQuote(goalMiles ?? 1000)}
+            align="center"
+            tone="onColor"
+            style={{ marginTop: Space.md }}
+          />
+          <Text size={14} style={{ color: '#fff', textAlign: 'center', marginTop: Space.md }}>
             Your finish time stopped the moment you crossed. It becomes official when this run uploads.
           </Text>
         </View>

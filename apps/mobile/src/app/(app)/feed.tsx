@@ -1,3 +1,4 @@
+import { milestoneQuote } from '@1k/core';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -7,6 +8,7 @@ import EmojiPicker from 'rn-emoji-keyboard';
 
 import { Card } from '@/components/card';
 import { FeedStory } from '@/components/feed-story';
+import { Quote } from '@/components/quote';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
@@ -120,6 +122,9 @@ function FeedCard({
   return (
     <Card style={item.type === 'finish' ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>
       <FeedStory item={item} isMe={item.actor_id === userId} />
+      {(item.type === 'milestone' || item.type === 'finish') && item.payload.miles != null && (
+        <Quote quote={milestoneQuote(item.payload.miles)} size={16} />
+      )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm, alignItems: 'center' }}>
         {emojis.map((emoji) => {
           const count = item.cheers.filter((c) => c.emoji === emoji).length;

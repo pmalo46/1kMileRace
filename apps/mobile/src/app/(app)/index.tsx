@@ -3,8 +3,10 @@ import {
   formatMiles,
   formatPace,
   metersToMiles,
+  milestoneQuote,
   paceSecondsPerMile,
   paceStatus,
+  quoteOfTheDay,
 } from '@1k/core';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -13,6 +15,7 @@ import { Pressable, RefreshControl, View } from 'react-native';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { ProgressRing } from '@/components/progress-ring';
+import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
@@ -61,6 +64,8 @@ export default function Home() {
         </Text>
       </View>
 
+      <Quote quote={quoteOfTheDay()} />
+
       <View style={{ alignItems: 'center', paddingVertical: Space.md }}>
         <ProgressRing progress={countedM / goalM}>
           <Text variant="display">{formatMiles(countedM)}</Text>
@@ -82,7 +87,10 @@ export default function Home() {
       {pace && (
         <Card>
           {pace.finished ? (
-            <Text variant="heading">You did it. 1,000 miles. 🏁</Text>
+            <>
+              <Text variant="heading">You did it. Every mile. 🏁</Text>
+              <Quote quote={milestoneQuote(Math.round(metersToMiles(goalM)))} size={16} />
+            </>
           ) : pace.aheadByM >= 0 ? (
             <>
               <Text variant="heading" style={{ color: colors.onPace }}>
@@ -205,6 +213,7 @@ function NoRaceYet() {
         <Text variant="heading" size={28} style={{ textAlign: 'center' }}>
           Your 1,000 miles start here
         </Text>
+        <Quote quote={milestoneQuote(1)} align="center" />
         <Text variant="muted" style={{ textAlign: 'center' }}>
           Join a friend’s race with an invite code, or start one and bring your people.
         </Text>

@@ -1,9 +1,11 @@
+import { milestoneQuote } from '@1k/core';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Field } from '@/components/field';
 import { ProgressRing } from '@/components/progress-ring';
+import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { supabase } from '@/lib/supabase';
@@ -47,9 +49,7 @@ export default function SignIn() {
           <Text variant="heading" size={30} style={{ textAlign: 'center' }}>
             1,000 miles.{'\n'}One year. Together.
           </Text>
-          <Text variant="muted" style={{ textAlign: 'center' }}>
-            Every mile counts, and nobody crosses the finish line alone.
-          </Text>
+          <Quote quote={milestoneQuote(1)} align="center" size={16} />
         </View>
         <View style={{ gap: Space.md, marginTop: Space.lg }}>
           {signingUp && (

@@ -1,3 +1,4 @@
+import { formatQuote, milestoneQuote } from "./quotes.ts";
 import { formatMiles } from "./units.ts";
 
 /** A push notification before it's addressed to anyone. `url` is the in-app route it opens. */
@@ -54,10 +55,8 @@ export function milestonePush(runner: string, kind: "milestone" | "finish", mile
     : { title: `${runner} hit ${distance} 🎉`, body: `Send a cheer in ${race}.`, url: "/feed" };
 }
 
-/** Sent to the runner themselves: the server's confirmation that the miles counted. */
+/** Sent to the runner themselves, with that milestone's quote. */
 export function ownMilestonePush(kind: "milestone" | "finish", miles: number, race: string): PushMessage {
-  const distance = milesLabel(miles);
-  return kind === "finish"
-    ? { title: `You finished ${race}! 🏁`, body: `All ${distance}. You did it.`, url: "/" }
-    : { title: `You hit ${distance} 🎉`, body: `That's another one down in ${race}.`, url: "/" };
+  const title = kind === "finish" ? `You finished ${race}! 🏁` : `You hit ${milesLabel(miles)} 🎉`;
+  return { title, body: formatQuote(milestoneQuote(miles)), url: "/" };
 }
