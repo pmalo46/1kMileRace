@@ -51,12 +51,12 @@ describe("push messages", () => {
   it("tells the runner about their own milestones and finish", () => {
     expect(ownMilestonePush("milestone", 500, "Neighborhood 1K")).toEqual({
       title: "You hit 500 miles 🎉",
-      body: "That's another one down in Neighborhood 1K.",
+      body: "“To travel hopefully is a better thing than to arrive.” — Robert Louis Stevenson",
       url: "/",
     });
     expect(ownMilestonePush("finish", 1000, "Neighborhood 1K")).toEqual({
       title: "You finished Neighborhood 1K! 🏁",
-      body: "All 1,000 miles. You did it.",
+      body: "“Great is the art of beginning, but greater the art is of ending.” — Henry Wadsworth Longfellow",
       url: "/",
     });
   });

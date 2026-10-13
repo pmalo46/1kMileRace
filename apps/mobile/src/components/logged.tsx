@@ -1,16 +1,21 @@
+import { runQuote } from '@1k/core';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import type { LogResult } from '@/lib/activities';
 import { Space } from '@/theme/tokens';
 
 import { Button } from './button';
+import { Quote } from './quote';
 import { Screen } from './screen';
 import { Text } from './text';
 
 /** The "you just added miles" screen shown after a run saves. */
 export function Logged({ result, miles }: { result: LogResult; miles: string }) {
   const races = result.countedIn.map((c) => c.race).join(', ');
+  // Chosen once, so it doesn't change under the reader if the screen re-renders.
+  const [quote] = useState(() => runQuote('after', Date.now()));
   return (
     <Screen scroll={false}>
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: Space.md }}>
@@ -18,8 +23,9 @@ export function Logged({ result, miles }: { result: LogResult; miles: string }) 
           +{miles}
         </Text>
         <Text variant="heading" style={{ textAlign: 'center' }}>
-          {miles === '1' ? 'mile' : 'miles'} closer. Nice work.
+          {miles === '1' ? 'mile' : 'miles'} closer.
         </Text>
+        <Quote quote={quote} align="center" style={{ marginVertical: Space.sm }} />
         <Text variant="muted" style={{ textAlign: 'center' }}>
           {races
             ? `Counted toward ${races}.`

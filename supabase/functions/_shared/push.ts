@@ -7,6 +7,8 @@ import type { PushMessage } from "@1k/core";
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 /** The most messages Expo accepts in one request. */
 const BATCH = 100;
+/** The Android channel the app creates for these (apps/mobile/src/lib/notifications.ts). */
+const CHANNEL = "activity";
 
 /**
  * Never throws: a push that can't be sent must not fail the request that caused it.
@@ -39,7 +41,7 @@ export async function sendPush(admin: SupabaseClient, userIds: string[], message
             body: message.body,
             data: { url: message.url },
             sound: "default",
-            channelId: "default",
+            channelId: CHANNEL,
             priority: "high",
           })),
         ),
