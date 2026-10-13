@@ -281,6 +281,30 @@ describe("row level security", () => {
   });
 });
 
+describe("push tokens", () => {
+  const tokens = () => db.q<{ token: string; user_id: string }>(`select token, user_id from push_tokens order by token`);
+
+  it("saves a device's token and hands it over when someone else signs in on that device", async () => {
+    await db.as(ann, `select register_push_token('ExponentPushToken[phone]', 'android')`);
+    await db.as(ann, `select register_push_token('ExponentPushToken[phone]', 'android')`);
+    expect(await tokens()).toEqual([{ token: "ExponentPushToken[phone]", user_id: ann }]);
+    await db.as(bo, `select register_push_token('ExponentPushToken[phone]', 'android')`);
+    expect(await tokens()).toEqual([{ token: "ExponentPushToken[phone]", user_id: bo }]);
+  });
+
+  it("keeps tokens private to their owner and away from signed-out callers", async () => {
+    await db.as(ann, `select register_push_token('ExponentPushToken[ann]', 'ios')`);
+    expect(await db.as(bo, `select * from push_tokens`)).toHaveLength(0);
+    expect(await db.as(ann, `select * from push_tokens`)).toHaveLength(1);
+    await db.pg.exec("set role anon");
+    try {
+      await expect(db.pg.query(`select register_push_token('x', 'ios')`)).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.pg.exec("reset role");
+    }
+  });
+});
+
 describe("logging runs", () => {
   const row = (overrides: Record<string, unknown> = {}) => ({
     source: "treadmill_manual",

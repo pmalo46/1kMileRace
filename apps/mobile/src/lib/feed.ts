@@ -12,6 +12,11 @@ const FEED_ITEM =
 
 const COMMENT = 'id, feed_item_id, user_id, body, created_at, author:profiles(display_name)';
 
+/** Asks the server to push-notify the people a new cheer or comment concerns. Best effort. */
+function notify(body: { kind: 'cheer'; feedItemId: string; emoji: string } | { kind: 'comment'; commentId: string }) {
+  supabase.functions.invoke('notify', { body }).catch(() => undefined);
+}
+
 const topic = (name: string) => `${name}:${Math.random().toString(36).slice(2)}`;
 
 /** The newest things that happened in a race, live: runs, milestones, finishes, and people joining. */
@@ -70,6 +75,7 @@ export function useFeed(raceId: string | undefined) {
         ? await supabase.from('cheers').delete().match({ feed_item_id: item.id, user_id: userId, emoji })
         : await supabase.from('cheers').insert({ feed_item_id: item.id, user_id: userId, emoji });
       if (error) refresh();
+      else if (!mine) notify({ kind: 'cheer', feedItemId: item.id, emoji });
     },
     [refresh],
   );
@@ -127,6 +133,7 @@ export function useComments(feedItemId: string | undefined) {
         .single();
       if (error) throw new Error(error.message);
       const posted = data as unknown as Comment;
+      notify({ kind: 'comment', commentId: posted.id });
       setComments((list) => [...(list ?? []).filter((c) => c.id !== posted.id), posted]);
     },
     [feedItemId],

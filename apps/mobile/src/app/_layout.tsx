@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/lib/auth';
 // Defines the background location task; it has to exist before anything renders.
 import '@/lib/recorder';
+import { registerForPush, useNotificationRouting } from '@/lib/notifications';
 import { useTheme } from '@/theme/use-theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -16,6 +17,12 @@ function RootNavigator() {
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
   }, [loading]);
+
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (userId) registerForPush();
+  }, [userId]);
+  useNotificationRouting(!!session);
   if (loading) return null;
 
   const base = dark ? DarkTheme : DefaultTheme;

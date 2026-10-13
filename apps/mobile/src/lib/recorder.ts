@@ -1,10 +1,11 @@
 import { summarizeTrack, type TrackPoint, type TrackSummary } from '@1k/core';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Location from 'expo-location';
 import { openDatabaseSync } from 'expo-sqlite';
 import * as TaskManager from 'expo-task-manager';
 
 import { LogError, logActivity, type ActivityDraft, type LogResult } from './activities';
+import { announceFinish } from './notifications';
+import { inExpoGo } from './runtime';
 
 /**
  * GPS run recording. Every fix is written to an on-device SQLite database as it
@@ -17,7 +18,7 @@ import { LogError, logActivity, type ActivityDraft, type LogResult } from './act
  * watching location while the app is open.
  */
 
-export const inExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+export { inExpoGo };
 const LOCATION_TASK = 'record-run-location';
 
 export type RecordingState = 'recording' | 'paused' | 'finished' | 'uploaded' | 'rejected';
@@ -35,6 +36,12 @@ export interface Recording {
   resumed_at: number;
   /** 1 if any fix came from a mock-location app (Android). */
   mocked: number;
+  /** Distance this run needs to cover to finish the race, when that's within reach. */
+  to_finish_m: number | null;
+  /** When this run covered it. */
+  crossed_at: number | null;
+  /** 1 once the runner has seen the finish celebration. */
+  celebrated: number;
 }
 
 /** The stopwatch: time spent recording, not counting pauses. */
@@ -65,6 +72,17 @@ db.execSync(`
   );
   create index if not exists points_by_recording on points (recording_id, t);
 `);
+// Added after the first builds went out; SQLite has no "add column if not exists".
+if (!db.getAllSync<{ name: string }>(`pragma table_info(recordings)`).some((c) => c.name === 'to_finish_m')) {
+  db.execSync(`
+    alter table recordings add column to_finish_m real;
+    alter table recordings add column crossed_at integer;
+    alter table recordings add column celebrated integer not null default 0;
+  `);
+}
+
+/** No single run is longer than this, so runners further from the finish aren't checked for it. */
+const LONGEST_RUN_M = 160_934;
 
 function appendLocations(locations: Location.LocationObject[]) {
   const rec = db.getFirstSync<Recording>(`select * from recordings where state = 'recording' limit 1`);
@@ -84,6 +102,11 @@ function appendLocations(locations: Location.LocationObject[]) {
       if (l.mocked) db.runSync(`update recordings set mocked = 1 where id = ?`, [rec.id]);
     }
   });
+  // The moment this run reaches the finish line, even with the screen locked.
+  if (rec.to_finish_m != null && rec.crossed_at == null && summarize(rec.id).distanceM >= rec.to_finish_m) {
+    db.runSync(`update recordings set crossed_at = ? where id = ?`, [Date.now(), rec.id]);
+    announceFinish();
+  }
 }
 
 // Background tasks must be defined at module scope, before anything renders.
@@ -160,20 +183,30 @@ export const currentRecording = () =>
 export const unsyncedRecordings = () =>
   db.getAllSync<Recording>(`select * from recordings where state = 'finished' order by started_at`);
 
-/** Asks for location access and starts recording. Returns null if permission was denied. */
-export async function startRecording(type: Recording['type']): Promise<{ recording: Recording; mode: TrackingMode } | null> {
+/**
+ * Asks for location access and starts recording. Returns null if permission was denied.
+ * `toFinishM` is how far the runner has left in their race; the recording watches for it.
+ */
+export async function startRecording(
+  type: Recording['type'],
+  toFinishM?: number,
+): Promise<{ recording: Recording; mode: TrackingMode } | null> {
   const { granted } = await Location.requestForegroundPermissionsAsync();
   if (!granted) return null;
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   const now = Date.now();
-  db.runSync(`insert into recordings (id, type, state, started_at, resumed_at) values (?, ?, 'recording', ?, ?)`, [
-    id,
-    type,
-    now,
-    now,
-  ]);
+  const watchFor = toFinishM != null && toFinishM > 0 && toFinishM <= LONGEST_RUN_M ? toFinishM : null;
+  db.runSync(
+    `insert into recordings (id, type, state, started_at, resumed_at, to_finish_m) values (?, ?, 'recording', ?, ?, ?)`,
+    [id, type, now, now, watchFor],
+  );
   const mode = await startTracking();
   return { recording: getRecording(id)!, mode };
+}
+
+/** The runner has seen the finish celebration for this recording. */
+export function markCelebrated(id: string) {
+  db.runSync(`update recordings set celebrated = 1 where id = ?`, [id]);
 }
 
 export async function pauseRecording(id: string) {
