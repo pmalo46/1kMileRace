@@ -26,6 +26,11 @@ describe("quotes", () => {
     expect(tomorrow).not.toEqual(morning);
   });
 
+  it("goes fifty days without repeating a quote of the day", () => {
+    const fifty = Array.from({ length: 50 }, (_, day) => quoteOfTheDay(new Date(2026, 9, 13 + day, 12, 0)).text);
+    expect(new Set(fifty).size).toBe(50);
+  });
+
   it("picks run quotes from the seed, whatever its sign or size", () => {
     expect(runQuote("before", 3)).toEqual(runQuote("before", 3));
     expect(runQuote("after", -5).text.length).toBeGreaterThan(0);
