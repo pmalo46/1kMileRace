@@ -36,7 +36,7 @@ const MILESTONE_QUOTES: Record<(typeof MILESTONE_MILES)[number], Quote> = {
   950: { text: "If your Nerve, deny you — Go above your Nerve.", author: "Emily Dickinson" },
   975: { text: "Twenty-five miles to go. You have already covered that distance thirty-nine times." },
   990: { text: "Ten miles. One long run or a few short ones. Either way, it is yours." },
-  995: { text: "To strive, to seek, to find, and not to yield.", author: "Alfred, Lord Tennyson" },
+  995: { text: "5 miles to go. The finish line is in sight!" },
   1000: {
     text: "Great is the art of beginning, but greater the art is of ending.",
     author: "Henry Wadsworth Longfellow",
@@ -73,6 +73,7 @@ const DAILY: Quote[] = [
   { text: "Fall seven times, stand up eight.", author: "Japanese proverb" },
   { text: "The finish line doesn't care how you got there. Walk, jog, shuffle. Just keep coming." },
   { text: "Afoot and light-hearted I take to the open road.", author: "Walt Whitman" },
+  { text: "The tree that bends in the wind doesn't break in the storm.", author: "African proverb" },
 ];
 
 /** Read on the way out of the door. */
