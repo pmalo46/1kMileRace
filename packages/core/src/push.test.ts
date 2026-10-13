@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cheerPush, commentPush, milestonePush } from "./push.ts";
+import { cheerPush, commentPush, milestonePush, ownMilestonePush } from "./push.ts";
 import { milesToMeters } from "./units.ts";
 
 const run = { id: "f1", type: "activity" as const, activity: { type: "run" as const, distanceM: milesToMeters(3.25) } };
@@ -45,6 +45,19 @@ describe("push messages", () => {
       title: "Ann finished Neighborhood 1K! 🏁",
       body: "All 1,000 miles. Go say congratulations.",
       url: "/feed",
+    });
+  });
+
+  it("tells the runner about their own milestones and finish", () => {
+    expect(ownMilestonePush("milestone", 500, "Neighborhood 1K")).toEqual({
+      title: "You hit 500 miles 🎉",
+      body: "That's another one down in Neighborhood 1K.",
+      url: "/",
+    });
+    expect(ownMilestonePush("finish", 1000, "Neighborhood 1K")).toEqual({
+      title: "You finished Neighborhood 1K! 🏁",
+      body: "All 1,000 miles. You did it.",
+      url: "/",
     });
   });
 });

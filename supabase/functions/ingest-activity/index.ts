@@ -6,7 +6,14 @@
 //   401 not signed in · 400 malformed · 409 duplicate · 422 breaks the rules
 
 import { createClient } from "@supabase/supabase-js";
-import { DEFAULT_RACE_RULES, IngestRequest, metersToMiles, milestonePush, planIngest } from "@1k/core";
+import {
+  DEFAULT_RACE_RULES,
+  IngestRequest,
+  metersToMiles,
+  milestonePush,
+  ownMilestonePush,
+  planIngest,
+} from "@1k/core";
 import { sendPush } from "../_shared/push.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -108,12 +115,16 @@ Deno.serve(async (req) => {
   });
   if (error) return json(500, { error: error.message });
 
-  // Tell the rest of each race about any milestone or finish this run brought.
+  // Tell the runner, and the rest of each race, about any milestone or finish this run brought.
   const known = new Set((before ?? []).map((m) => m.id));
   const reached = ((await milestoneItems(user.id)).data ?? []).filter((m) => !known.has(m.id));
   if (reached.length > 0) {
     const { data: profile } = await admin.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
     for (const m of reached) {
+      const kind = m.type as "milestone" | "finish";
+      const miles = (m.payload as { miles?: number } | null)?.miles ?? 0;
+      const race = (m.race as unknown as { name: string } | null)?.name ?? "the race";
+      await sendPush(admin, [user.id], ownMilestonePush(kind, miles, race));
       const { data: members } = await admin
         .from("race_members")
         .select("user_id")
@@ -122,12 +133,7 @@ Deno.serve(async (req) => {
       await sendPush(
         admin,
         (members ?? []).map((r) => r.user_id as string),
-        milestonePush(
-          profile?.display_name ?? "A runner",
-          m.type as "milestone" | "finish",
-          (m.payload as { miles?: number } | null)?.miles ?? 0,
-          (m.race as unknown as { name: string } | null)?.name ?? "the race",
-        ),
+        milestonePush(profile?.display_name ?? "A runner", kind, miles, race),
       );
     }
   }

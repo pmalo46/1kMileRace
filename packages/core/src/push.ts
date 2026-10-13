@@ -44,10 +44,20 @@ export function commentPush(author: string, body: string, item: FeedItemSummary,
   };
 }
 
+const milesLabel = (miles: number) => `${miles.toLocaleString("en-US")} ${miles === 1 ? "mile" : "miles"}`;
+
 /** Sent to the rest of the race when a runner reaches a milestone or finishes. */
 export function milestonePush(runner: string, kind: "milestone" | "finish", miles: number, race: string): PushMessage {
-  const distance = `${miles.toLocaleString("en-US")} ${miles === 1 ? "mile" : "miles"}`;
+  const distance = milesLabel(miles);
   return kind === "finish"
     ? { title: `${runner} finished ${race}! 🏁`, body: `All ${distance}. Go say congratulations.`, url: "/feed" }
     : { title: `${runner} hit ${distance} 🎉`, body: `Send a cheer in ${race}.`, url: "/feed" };
+}
+
+/** Sent to the runner themselves: the server's confirmation that the miles counted. */
+export function ownMilestonePush(kind: "milestone" | "finish", miles: number, race: string): PushMessage {
+  const distance = milesLabel(miles);
+  return kind === "finish"
+    ? { title: `You finished ${race}! 🏁`, body: `All ${distance}. You did it.`, url: "/" }
+    : { title: `You hit ${distance} 🎉`, body: `That's another one down in ${race}.`, url: "/" };
 }
