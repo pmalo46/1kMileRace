@@ -6,7 +6,15 @@
 //   401 not signed in · 400 malformed · 409 duplicate · 422 breaks the rules
 
 import { createClient } from "@supabase/supabase-js";
-import { DEFAULT_RACE_RULES, IngestRequest, metersToMiles, planIngest } from "@1k/core";
+import {
+  DEFAULT_RACE_RULES,
+  IngestRequest,
+  metersToMiles,
+  milestonePush,
+  ownMilestonePush,
+  planIngest,
+} from "@1k/core";
+import { sendPush } from "../_shared/push.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -14,6 +22,14 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+/** The runner's milestone and finish feed items, to spot the ones a new run adds. */
+const milestoneItems = (userId: string) =>
+  admin
+    .from("feed_items")
+    .select("id, race_id, type, payload, race:races(name)")
+    .eq("actor_id", userId)
+    .in("type", ["milestone", "finish"]);
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Use POST." });
@@ -88,6 +104,8 @@ Deno.serve(async (req) => {
     return json(409, { error: "You already have an activity logged at that time." });
   }
 
+  const { data: before } = await milestoneItems(user.id);
+
   const { data: saved, error } = await admin.rpc("ingest_activity", {
     p_user: user.id,
     p_activity: plan.row,
@@ -96,6 +114,29 @@ Deno.serve(async (req) => {
     p_evidence_taken_at: activity.evidenceTakenAt?.toISOString() ?? null,
   });
   if (error) return json(500, { error: error.message });
+
+  // Tell the runner, and the rest of each race, about any milestone or finish this run brought.
+  const known = new Set((before ?? []).map((m) => m.id));
+  const reached = ((await milestoneItems(user.id)).data ?? []).filter((m) => !known.has(m.id));
+  if (reached.length > 0) {
+    const { data: profile } = await admin.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
+    for (const m of reached) {
+      const kind = m.type as "milestone" | "finish";
+      const miles = (m.payload as { miles?: number } | null)?.miles ?? 0;
+      const race = (m.race as unknown as { name: string } | null)?.name ?? "the race";
+      await sendPush(admin, [user.id], ownMilestonePush(kind, miles, race));
+      const { data: members } = await admin
+        .from("race_members")
+        .select("user_id")
+        .match({ race_id: m.race_id, status: "active" })
+        .neq("user_id", user.id);
+      await sendPush(
+        admin,
+        (members ?? []).map((r) => r.user_id as string),
+        milestonePush(profile?.display_name ?? "A runner", kind, miles, race),
+      );
+    }
+  }
 
   const { data: counted } = await admin
     .from("race_activities")

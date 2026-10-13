@@ -32,7 +32,7 @@ npm run typecheck
 1. Create a project at supabase.com.
 2. Apply the schema: `npx supabase link --project-ref <ref>` then `npx supabase db push`.
 3. Push auth settings: `npx supabase config push`. Email confirmation is off, so the app's email and password sign-in never sends email.
-4. Deploy the edge function: `npx supabase functions deploy ingest-activity`.
+4. Deploy the edge functions: `npx supabase functions deploy ingest-activity` and `npx supabase functions deploy notify`.
 5. Copy `apps/mobile/.env.example` to `apps/mobile/.env` and fill in the URL and publishable key.
 
 ### Mobile app
@@ -53,6 +53,17 @@ npx eas-cli@latest build --profile development --platform android
 
 Install the APK it produces on your phone, then `npx expo start` and open the 1K Miles app (press `s` in the terminal to switch between the development build and Expo Go).
 
+### Push notifications
+
+Push needs a development or store build; Expo Go can't receive it. Android delivers through Firebase Cloud Messaging, so, once per project:
+
+1. Create a Firebase project and add an Android app with the package `com.onekmiles.app`.
+2. Download its `google-services.json` into `apps/mobile/` and point `expo.android.googleServicesFile` in `app.json` at it.
+3. In Firebase, Project settings → Service accounts → Generate new private key. Upload that JSON to EAS (expo.dev → the project → Credentials → Android → FCM V1 service account key). Don't commit it.
+4. Make a new build.
+
+The app saves each device's Expo push token with `register_push_token`. The `notify` function announces cheers and comments, and `ingest-activity` announces milestones and finishes, both through the Expo Push Service.
+
 ## Status
 
 Phase 0 (foundations) is in place:
@@ -65,5 +76,7 @@ Phase 1 so far:
 - add a run by hand as a fallback (outdoors, or treadmill with a console photo); marked for review
 - the `ingest-activity` edge function applies the shared rules engine and dedup before saving
 - a live race feed of runs, milestones, finishes and new members, with emoji cheers and comments
+- the finish line: the clock stops the moment a run reaches the goal (not when that run ends), the finishing run counts at any length, and the phone buzzes and celebrates mid-run, even with the screen locked
+- push notifications for cheers, comments, milestones and finishes (development and store builds; see below)
 
-Next up: push notifications (cheers, comments, milestones), then Health Connect / Apple Health import (watch runs, including treadmill).
+Next up: Health Connect / Apple Health import (watch runs, including treadmill), and shareable invite links.

@@ -9,7 +9,13 @@ export function Screen({
   children,
   scroll = true,
   refreshControl,
-}: PropsWithChildren<{ scroll?: boolean; refreshControl?: React.ReactElement<RefreshControlProps> }>) {
+  transparent = false,
+}: PropsWithChildren<{
+  scroll?: boolean;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
+  /** Lets whatever is behind the screen (e.g. a gradient) show through. */
+  transparent?: boolean;
+}>) {
   const { colors } = useTheme();
   const body = scroll ? (
     <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
@@ -19,7 +25,7 @@ export function Screen({
     <View style={[styles.content, { flex: 1 }]}>{children}</View>
   );
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: transparent ? 'transparent' : colors.background }}>
       {body}
     </SafeAreaView>
   );

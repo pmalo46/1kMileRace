@@ -5,11 +5,13 @@ import {
   formatPace,
   MAX_ACCURACY_M,
   meetsMinimumDistance,
+  metersToMiles,
   paceSecondsPerMile,
   summarizeTrack,
   type TrackPoint,
 } from '@1k/core';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -22,9 +24,10 @@ import { RouteSketch } from '@/components/route-sketch';
 import { Screen } from '@/components/screen';
 import { Segmented } from '@/components/segmented';
 import { Text } from '@/components/text';
-import { useToFinishM } from '@/lib/active-race';
+import { useActiveRace, useToFinishM } from '@/lib/active-race';
 import { LogError, type LogResult } from '@/lib/activities';
 import { useAuth } from '@/lib/auth';
+import { ensureNotificationPermission } from '@/lib/notifications';
 import {
   activeMs,
   currentRecording,
@@ -32,16 +35,19 @@ import {
   finishRecording,
   getRecording,
   inExpoGo,
+  markCelebrated,
   pauseRecording,
   reattachRecording,
   recordingPoints,
   resumeRecording,
   startRecording,
+  summarize,
+  unsyncedRecordings,
   uploadRecording,
   type Recording,
   type TrackingMode,
 } from '@/lib/recorder';
-import { Space } from '@/theme/tokens';
+import { Space, Sunrise } from '@/theme/tokens';
 import { useTheme } from '@/theme/use-theme';
 
 const KEEP_AWAKE_TAG = 'recording';
@@ -92,7 +98,9 @@ export default function Record() {
 
   const start = async () => {
     setBusy(true);
-    const started = await startRecording(type);
+    // Runs still waiting to upload already count toward the distance left.
+    const waitingM = unsyncedRecordings().reduce((sum, r) => sum + summarize(r.id).distanceM, 0);
+    const started = await startRecording(type, toFinishM == null ? undefined : toFinishM - waitingM);
     setBusy(false);
     if (!started) {
       return Alert.alert('Location needed', 'Recording measures your run with GPS. Allow location access to start.', [
@@ -103,6 +111,8 @@ export default function Record() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setRec(started.recording);
     setMode(started.mode);
+    // So the finish line can be announced on a locked screen.
+    if (started.recording.to_finish_m != null) ensureNotificationPermission();
   };
 
   const pause = async () => {
@@ -181,6 +191,21 @@ export default function Record() {
   if (saved) return <Logged result={saved.result} miles={saved.miles} />;
   if (queued && rec) return <Queued message={queued} busy={busy} onRetry={() => upload(rec.id)} />;
   if (!rec) return <Ready type={type} onType={setType} onStart={start} busy={busy} />;
+  if (rec.crossed_at != null && !rec.celebrated) {
+    const seen = () => {
+      markCelebrated(rec.id);
+      setRec(getRecording(rec.id));
+    };
+    return (
+      <Celebration
+        onKeepGoing={seen}
+        onFinish={() => {
+          seen();
+          finish();
+        }}
+      />
+    );
+  }
 
   return (
     <Active
@@ -311,6 +336,42 @@ function Active(props: {
         <Button title="Pause" onPress={props.onPause} />
       )}
     </Screen>
+  );
+}
+
+/** Takes over the screen the moment a run in progress reaches the race goal. */
+function Celebration({ onKeepGoing, onFinish }: { onKeepGoing: () => void; onFinish: () => void }) {
+  const { race } = useActiveRace();
+  const goal = race ? Math.round(metersToMiles(race.goal_m)).toLocaleString() : null;
+
+  useEffect(() => {
+    const buzz = () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    buzz();
+    const timers = [400, 800, 1400].map((ms) => setTimeout(buzz, ms));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <LinearGradient colors={Sunrise} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
+      <Screen scroll={false} transparent>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: Space.sm }}>
+          <Text size={72}>🏁</Text>
+          <Text variant="display" size={goal ? 84 : 44} style={{ color: '#fff', textAlign: 'center' }}>
+            {goal ?? 'Finish line!'}
+          </Text>
+          <Text variant="heading" size={28} style={{ color: '#fff', textAlign: 'center' }}>
+            {goal ? 'miles. You did it.' : 'You did it.'}
+          </Text>
+          <Text style={{ color: '#fff', textAlign: 'center', marginTop: Space.md }}>
+            Your finish time stopped the moment you crossed. It becomes official when this run uploads.
+          </Text>
+        </View>
+        <View style={{ gap: Space.sm }}>
+          <Button title="Keep going for bonus miles" variant="secondary" onPress={onKeepGoing} />
+          <Button title="Finish my run" variant="secondary" onPress={onFinish} />
+        </View>
+      </Screen>
+    </LinearGradient>
   );
 }
 

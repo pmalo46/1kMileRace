@@ -394,6 +394,11 @@ deno_version = 2
 verify_jwt = false
 import_map = "./functions/ingest-activity/deno.json"
 
+# Checks the caller's session itself, like ingest-activity.
+[functions.notify]
+verify_jwt = false
+import_map = "./functions/notify/deno.json"
+
 [analytics]
 enabled = true
 port = 54327
