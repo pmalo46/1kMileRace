@@ -22,7 +22,12 @@ try {
   Notifications = null;
 }
 
-const DEFAULT_CHANNEL = 'default';
+/**
+ * Where cheers, comments and milestones arrive. Must match the channel the server sends to
+ * (supabase/functions/_shared/push.ts). Android fixes a channel's importance when it's
+ * created, so making these louder meant a new channel, not editing "default".
+ */
+const ACTIVITY_CHANNEL = 'activity';
 const FINISH_CHANNEL = 'finish';
 /** Long enough to feel through a pocket, and unlike any other buzz the app makes. */
 const FINISH_VIBRATION = [0, 700, 200, 700, 200, 1100];
@@ -39,9 +44,13 @@ Notifications?.setNotificationHandler({
 /** Android shows no permission prompt until a channel exists, so channels come first. */
 async function ensureChannels(N: NotificationsModule) {
   if (Platform.OS !== 'android') return;
-  await N.setNotificationChannelAsync(DEFAULT_CHANNEL, {
+  // HIGH is what makes a notification pop up as a banner with sound.
+  await N.setNotificationChannelAsync(ACTIVITY_CHANNEL, {
     name: 'Cheers, comments and milestones',
-    importance: N.AndroidImportance.DEFAULT,
+    importance: N.AndroidImportance.HIGH,
+    sound: 'default',
+    enableVibrate: true,
+    vibrationPattern: [0, 250, 150, 250],
   });
   await N.setNotificationChannelAsync(FINISH_CHANNEL, {
     name: 'Crossing the finish line',
