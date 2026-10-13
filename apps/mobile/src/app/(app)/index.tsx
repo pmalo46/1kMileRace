@@ -18,9 +18,10 @@ import { ProgressRing } from '@/components/progress-ring';
 import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
-import { useActiveRace } from '@/lib/active-race';
+import { useActiveRace, useToFinishM } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
 import { greeting } from '@/lib/greeting';
+import { healthStatus, syncHealth } from '@/lib/health-connect';
 import { useStandings } from '@/lib/races';
 import { currentRecording, unsyncedRecordings, uploadRecording } from '@/lib/recorder';
 import { Space } from '@/theme/tokens';
@@ -74,15 +75,20 @@ export default function Home() {
       </View>
 
       <RecordingStatus />
+      <WatchRuns onImported={refreshStandings} />
       <Button title="Start a run" onPress={() => router.push('/record')} />
-      <Pressable
-        onPress={() => router.push('/log-run')}
-        accessibilityRole="link"
-        style={{ alignSelf: 'center', padding: Space.xs }}>
-        <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
-          Add a run by hand
-        </Text>
-      </Pressable>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: Space.lg }}>
+        <Pressable onPress={() => router.push('/log-run')} accessibilityRole="link" style={{ padding: Space.xs }}>
+          <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
+            Add a run by hand
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/health')} accessibilityRole="link" style={{ padding: Space.xs }}>
+          <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
+            Runs from your watch
+          </Text>
+        </Pressable>
+      </View>
 
       {pace && (
         <Card>
@@ -188,6 +194,47 @@ function RecordingStatus() {
     );
   }
   return null;
+}
+
+/** How often opening Home goes looking for new watch runs. */
+const WATCH_SYNC_EVERY_MS = 10 * 60 * 1000;
+let lastWatchSync = 0;
+
+/** Quietly picks up new runs from Health Connect when Home opens, and says so when it finds some. */
+function WatchRuns({ onImported }: { onImported: () => void }) {
+  const { session } = useAuth();
+  const toFinishM = useToFinishM();
+  const [added, setAdded] = useState<{ count: number; miles: string } | null>(null);
+  const userId = session?.user.id;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId || Date.now() - lastWatchSync < WATCH_SYNC_EVERY_MS) return;
+      lastWatchSync = Date.now();
+      (async () => {
+        if ((await healthStatus()) !== 'connected') return;
+        const { imported } = await syncHealth(userId, toFinishM);
+        if (imported.length === 0) return;
+        setAdded({
+          count: imported.length,
+          miles: formatMiles(imported.reduce((sum, a) => sum + a.distanceM, 0)),
+        });
+        onImported();
+      })().catch(() => undefined);
+      // toFinishM only loosens the rules for a finishing run; a stale value just defers to the server.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId]),
+  );
+
+  if (!added) return null;
+  return (
+    <Card>
+      <Text variant="heading">
+        Added {added.count} {added.count === 1 ? 'workout' : 'workouts'} from your watch
+      </Text>
+      <Text variant="muted">{added.miles} miles, picked up from Health Connect.</Text>
+    </Card>
+  );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

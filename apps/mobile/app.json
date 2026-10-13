@@ -29,7 +29,9 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_DISTANCE"
       ]
     },
     "web": {
@@ -73,6 +75,15 @@
         {
           "color": "#F2552C",
           "defaultChannel": "default"
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],

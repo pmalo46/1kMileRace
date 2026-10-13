@@ -78,5 +78,6 @@ Phase 1 so far:
 - a live race feed of runs, milestones, finishes and new members, with emoji cheers and comments
 - the finish line: the clock stops the moment a run reaches the goal (not when that run ends), the finishing run counts at any length, and the phone buzzes and celebrates mid-run, even with the screen locked
 - push notifications for cheers, comments, milestones and finishes (development and store builds; see below)
+- runs and walks from a watch or another fitness app, imported on Android through Health Connect; a run also recorded in the app counts once, and a watch's treadmill run counts without a console photo
 
-Next up: Health Connect / Apple Health import (watch runs, including treadmill), and shareable invite links.
+Next up: Apple Health import (the iPhone side of watch runs), routes for imported runs, and shareable invite links.
