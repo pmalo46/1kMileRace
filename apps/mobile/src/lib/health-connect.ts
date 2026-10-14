@@ -30,6 +30,8 @@ if (Platform.OS === 'android' && !inExpoGo) {
 }
 
 const OUR_PACKAGE = 'com.onekmiles.app';
+/** Health Connect's Metadata.RECORDING_METHOD_MANUAL_ENTRY. */
+const MANUAL_ENTRY = 3;
 const READS = [
   { accessType: 'read', recordType: 'ExerciseSession' },
   { accessType: 'read', recordType: 'Distance' },
@@ -106,6 +108,8 @@ export type WorkoutOutcome =
   /** Imported or turned away on an earlier check. */
   | 'seen-before'
   | 'not-run-or-walk'
+  /** Typed into another app by hand, not recorded by it. */
+  | 'hand-entered'
   | 'no-distance'
   | 'not-counted'
   | 'failed';
@@ -175,6 +179,13 @@ export async function syncHealth(userId: string, toFinishM?: number): Promise<He
     };
     summary.seen.unshift(seen);
     if (handled[id]) continue;
+    // Runs typed into another app by hand aren't imported: the import is for what a watch
+    // or app actually recorded. A run entered by hand belongs in "Add a run by hand" here,
+    // where it's marked for review like any other.
+    if (record.metadata?.recordingMethod === MANUAL_ENTRY) {
+      seen.outcome = 'hand-entered';
+      continue;
+    }
 
     const span = { operator: 'between', startTime: record.startTime, endTime: record.endTime } as const;
     // Distance from the app that recorded the workout, so a phone's step count isn't added on top.

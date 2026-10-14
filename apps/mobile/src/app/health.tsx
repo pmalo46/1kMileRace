@@ -134,6 +134,7 @@ const OUTCOMES: Record<WorkoutOutcome, string> = {
   'already-logged': 'Already logged',
   'seen-before': 'Checked before',
   'not-run-or-walk': 'Not a run or walk',
+  'hand-entered': 'Entered by hand, so not imported',
   'no-distance': 'No distance recorded',
   'not-counted': 'Didn’t count',
   failed: 'Couldn’t upload, will retry',
