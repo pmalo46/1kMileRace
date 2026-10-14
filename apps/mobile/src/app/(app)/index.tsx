@@ -14,12 +14,11 @@ import {
 } from '@1k/core';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { MileWall } from '@/components/mile-wall';
-import { MilestoneBadge } from '@/components/milestone-badge';
 import { ProgressRing } from '@/components/progress-ring';
 import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
@@ -70,8 +69,8 @@ export default function Home() {
   const next = nextMilestone(countedM, goalM);
   const rival = standings && session ? rivalAhead(standings, session.user.id) : null;
   const typicalRunM = me?.activity_count ? me.total_distance_m / me.activity_count : 0;
-  const badges = MILESTONE_MILES.filter((m) => m <= goalMiles);
-  const earned = badges.filter((m) => m * METERS_PER_MILE <= countedM + 0.5).length;
+  const milestones = MILESTONE_MILES.filter((m) => m <= goalMiles);
+  const reached = milestones.filter((m) => m * METERS_PER_MILE <= countedM + 0.5).length;
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
@@ -95,12 +94,13 @@ export default function Home() {
             {percent}%
           </Text>
         </View>
-        <MileWall goalMiles={goalMiles} filledMiles={metersToMiles(countedM)} />
-        {next && (
-          <Text variant="muted">
-            Next badge at {next.miles.toLocaleString()} miles: {formatMiles(next.toGoM)} to go.
-          </Text>
-        )}
+        <MileWall goalMiles={goalMiles} filledMiles={metersToMiles(countedM)} milestones={milestones} />
+        <Text variant="muted">
+          {next
+            ? `Next milestone at ${next.miles.toLocaleString()} miles: ${formatMiles(next.toGoM)} to go.`
+            : 'Every milestone reached.'}{' '}
+          {reached} of {milestones.length} gold so far.
+        </Text>
       </Card>
 
       <RecordingStatus />
@@ -168,20 +168,6 @@ export default function Home() {
           </Card>
         </Pressable>
       )}
-
-      <Card>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text variant="label">Badges</Text>
-          <Text variant="muted" size={13}>
-            {earned} of {badges.length}
-          </Text>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Space.md, paddingVertical: Space.xs }}>
-          {badges.map((m) => (
-            <MilestoneBadge key={m} miles={m} earned={m * METERS_PER_MILE <= countedM + 0.5} />
-          ))}
-        </ScrollView>
-      </Card>
 
       <View style={{ flexDirection: 'row', gap: Space.sm }}>
         <Stat label="Place" value={myPlace ? `#${myPlace}` : '–'} />

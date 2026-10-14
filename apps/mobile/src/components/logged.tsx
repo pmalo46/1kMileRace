@@ -1,4 +1,13 @@
-import { formatMiles, metersToMiles, milesToMeters, nextMilestone, passedBy, runQuote, runsToCover } from '@1k/core';
+import {
+  MILESTONE_MILES,
+  formatMiles,
+  metersToMiles,
+  milesToMeters,
+  nextMilestone,
+  passedBy,
+  runQuote,
+  runsToCover,
+} from '@1k/core';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -59,11 +68,18 @@ export function Logged({ result, miles }: { result: LogResult; miles: string }) 
 
       {me && race && countedMiles > 0 && (
         <Card>
-          <MileWall goalMiles={goalMiles} filledMiles={totalMiles} freshMiles={freshTiles} animate />
+          <MileWall
+            goalMiles={goalMiles}
+            filledMiles={totalMiles}
+            freshMiles={freshTiles}
+            milestones={MILESTONE_MILES.filter((m) => m <= goalMiles)}
+            animate
+          />
           <View style={{ flexDirection: 'row', gap: Space.md, flexWrap: 'wrap' }}>
             <Key color={colors.accent} label="Run" />
             <Key color={Sunrise[2]} label="This run" />
             <Key color={colors.track} label="To go" />
+            <Key color="#F5B700" label="Milestone" />
           </View>
           <Text variant="muted">
             {freshTiles > 0
@@ -84,7 +100,7 @@ export function Logged({ result, miles }: { result: LogResult; miles: string }) 
 
       {next && runsToNext && (
         <Card>
-          <Text variant="label">Next badge</Text>
+          <Text variant="label">Next milestone</Text>
           <Text variant="heading">
             {formatMiles(next.toGoM)} miles to {next.miles.toLocaleString()}
           </Text>
