@@ -16,6 +16,7 @@ import {
   syncHealth,
   type HealthStatus,
   type HealthSync,
+  type WorkoutOutcome,
 } from '@/lib/health-connect';
 import { Space } from '@/theme/tokens';
 
@@ -59,8 +60,8 @@ export default function Health() {
   };
 
   return (
-    <Screen scroll={false}>
-      <View style={{ flex: 1, gap: Space.md }}>
+    <Screen>
+      <View style={{ gap: Space.md }}>
         <Text variant="heading" size={28}>
           Runs from your watch
         </Text>
@@ -109,7 +110,7 @@ export default function Health() {
         {result && <SyncResult result={result} />}
       </View>
 
-      <View style={{ gap: Space.sm }}>
+      <View style={{ gap: Space.sm, marginTop: Space.md }}>
         {status === 'needs-install' && (
           <Button title="Open the Play Store" onPress={() => Linking.openURL(HEALTH_CONNECT_STORE)} />
         )}
@@ -128,10 +129,20 @@ export default function Health() {
   );
 }
 
+const OUTCOMES: Record<WorkoutOutcome, string> = {
+  imported: 'Added',
+  'already-logged': 'Already logged',
+  'seen-before': 'Checked before',
+  'not-run-or-walk': 'Not a run or walk',
+  'hand-entered': 'Entered by hand, so not imported',
+  'no-distance': 'No distance recorded',
+  'not-counted': 'Didn’t count',
+  failed: 'Couldn’t upload, will retry',
+};
+
 function SyncResult({ result }: { result: HealthSync }) {
-  const { imported, alreadyLogged, notCounted, failed } = result;
+  const { seen, imported, failed } = result;
   const miles = imported.reduce((sum, a) => sum + a.distanceM, 0);
-  const nothing = imported.length + alreadyLogged + notCounted + failed === 0;
   return (
     <Card>
       <Text variant="heading">
@@ -139,12 +150,33 @@ function SyncResult({ result }: { result: HealthSync }) {
           ? `Added ${imported.length} ${imported.length === 1 ? 'workout' : 'workouts'}, ${formatMiles(miles)} miles`
           : 'Nothing new to add'}
       </Text>
-      {nothing && <Text variant="muted">No runs or walks in Health Connect from the last week.</Text>}
-      {alreadyLogged > 0 && <Text variant="muted">{alreadyLogged} already logged.</Text>}
-      {notCounted > 0 && (
-        <Text variant="muted">{notCounted} didn’t count under the race rules, most often for being under a mile.</Text>
-      )}
       {failed > 0 && <Text variant="muted">{failed} couldn’t upload just now and will be tried again.</Text>}
+      {seen.length === 0 ? (
+        <Text variant="muted">
+          Health Connect didn’t share any workouts from the last week. If you’ve recorded one, check that the app you
+          recorded it in is set to share with Health Connect.
+        </Text>
+      ) : (
+        <>
+          <Text variant="label" style={{ marginTop: Space.xs }}>
+            What Health Connect shared
+          </Text>
+          {seen.slice(0, 8).map((w) => (
+            <View key={w.id} style={{ gap: 2 }}>
+              <Text>
+                <Text style={{ fontWeight: '800' }}>{OUTCOMES[w.outcome]}</Text>
+                {w.distanceM > 0 ? ` · ${formatMiles(w.distanceM, 2)} mi` : ''}
+              </Text>
+              <Text variant="muted" size={13}>
+                {new Date(w.startedAt).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}
+                {' · '}
+                {w.app}
+                {w.reason ? ` · ${w.reason}` : ''}
+              </Text>
+            </View>
+          ))}
+        </>
+      )}
     </Card>
   );
 }

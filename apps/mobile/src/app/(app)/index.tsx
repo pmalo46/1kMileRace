@@ -1,12 +1,16 @@
 import {
+  METERS_PER_MILE,
+  MILESTONE_MILES,
   distanceBoard,
   formatMiles,
   formatPace,
   metersToMiles,
   milestoneQuote,
+  nextMilestone,
   paceSecondsPerMile,
   paceStatus,
   quoteOfTheDay,
+  rivalAhead,
 } from '@1k/core';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -14,14 +18,17 @@ import { Pressable, RefreshControl, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { MileWall } from '@/components/mile-wall';
 import { ProgressRing } from '@/components/progress-ring';
 import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
+import { WeekStrip } from '@/components/week-strip';
 import { useActiveRace, useToFinishM } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
 import { greeting } from '@/lib/greeting';
 import { healthStatus, syncHealth } from '@/lib/health-connect';
+import { useMyWeek } from '@/lib/momentum';
 import { useStandings } from '@/lib/races';
 import { currentRecording, unsyncedRecordings, uploadRecording } from '@/lib/recorder';
 import { Space } from '@/theme/tokens';
@@ -32,6 +39,7 @@ export default function Home() {
   const { colors } = useTheme();
   const { race, loaded, refresh: refreshRaces } = useActiveRace();
   const { standings, refresh: refreshStandings } = useStandings(race?.id);
+  const { week, refresh: refreshWeek } = useMyWeek(session?.user.id);
   const [refreshing, setRefreshing] = useState(false);
 
   const me = standings?.find((s) => s.user_id === session?.user.id);
@@ -42,7 +50,7 @@ export default function Home() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refreshRaces(), refreshStandings()]);
+    await Promise.all([refreshRaces(), refreshStandings(), refreshWeek()]);
     setRefreshing(false);
   };
 
@@ -54,6 +62,15 @@ export default function Home() {
     ? paceStatus(countedM, { startsAt: new Date(race.starts_at), endsAt: new Date(race.ends_at), goalM })
     : null;
   const name = me?.profile?.display_name ?? '';
+  const goalMiles = Math.round(metersToMiles(goalM));
+  const progress = Math.min(1, countedM / goalM) * 100;
+  // Under 10% a whole number barely moves, so show a decimal until it does.
+  const percent = progress < 10 ? (Math.floor(progress * 10) / 10).toFixed(1) : String(Math.floor(progress));
+  const next = nextMilestone(countedM, goalM);
+  const rival = standings && session ? rivalAhead(standings, session.user.id) : null;
+  const typicalRunM = me?.activity_count ? me.total_distance_m / me.activity_count : 0;
+  const milestones = MILESTONE_MILES.filter((m) => m <= goalMiles);
+  const reached = milestones.filter((m) => m * METERS_PER_MILE <= countedM + 0.5).length;
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
@@ -67,15 +84,51 @@ export default function Home() {
 
       <Quote quote={quoteOfTheDay()} />
 
-      <View style={{ alignItems: 'center', paddingVertical: Space.md }}>
-        <ProgressRing progress={countedM / goalM}>
-          <Text variant="display">{formatMiles(countedM)}</Text>
-          <Text variant="muted">of {Math.round(metersToMiles(goalM)).toLocaleString()} miles</Text>
-        </ProgressRing>
-      </View>
+      <Card>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <View>
+            <Text variant="display">{formatMiles(countedM)}</Text>
+            <Text variant="muted">of {goalMiles.toLocaleString()} miles</Text>
+          </View>
+          <Text variant="display" size={22} style={{ color: colors.accent }}>
+            {percent}%
+          </Text>
+        </View>
+        <MileWall goalMiles={goalMiles} filledMiles={metersToMiles(countedM)} milestones={milestones} />
+        <Text variant="muted">
+          {next
+            ? `Next milestone at ${next.miles.toLocaleString()} miles: ${formatMiles(next.toGoM)} to go.`
+            : 'Every milestone reached.'}{' '}
+          {reached} of {milestones.length} gold so far.
+        </Text>
+      </Card>
 
       <RecordingStatus />
       <WatchRuns onImported={refreshStandings} />
+
+      {pace && (
+        <Card style={!pace.finished && week && !week.ranToday ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>
+          {pace.finished ? (
+            <>
+              <Text variant="heading">You did it. Every mile. 🏁</Text>
+              <Quote quote={milestoneQuote(goalMiles)} size={16} />
+            </>
+          ) : (
+            <>
+              <Text variant="label">Today</Text>
+              <Text variant="heading">{week?.ranToday ? 'Done for today ✓' : 'Not yet today'}</Text>
+              <Text variant="muted" style={{ color: pace.aheadByM >= 0 ? colors.onPace : colors.behindPace }}>
+                {pace.aheadByM >= 0
+                  ? `${formatMiles(pace.aheadByM)} miles ahead of pace. Keep this rhythm and you’ll finish early.`
+                  : Number.isFinite(pace.requiredDailyM)
+                    ? `${metersToMiles(pace.requiredDailyM).toFixed(1)} miles a day gets you there, with ${Math.ceil(pace.daysRemaining)} days left.`
+                    : 'Every mile from here still counts.'}
+              </Text>
+            </>
+          )}
+        </Card>
+      )}
+
       <Button title="Start a run" onPress={() => router.push('/record')} />
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: Space.lg }}>
         <Pressable onPress={() => router.push('/log-run')} accessibilityRole="link" style={{ padding: Space.xs }}>
@@ -90,31 +143,30 @@ export default function Home() {
         </Pressable>
       </View>
 
-      {pace && (
+      {week && (
         <Card>
-          {pace.finished ? (
-            <>
-              <Text variant="heading">You did it. Every mile. 🏁</Text>
-              <Quote quote={milestoneQuote(Math.round(metersToMiles(goalM)))} size={16} />
-            </>
-          ) : pace.aheadByM >= 0 ? (
-            <>
-              <Text variant="heading" style={{ color: colors.onPace }}>
-                {formatMiles(pace.aheadByM)} mi ahead of pace
-              </Text>
-              <Text variant="muted">Keep this rhythm and you’ll finish early.</Text>
-            </>
-          ) : (
-            <>
-              <Text variant="heading" style={{ color: colors.behindPace }}>
-                {metersToMiles(pace.requiredDailyM).toFixed(1)} mi a day gets you there
-              </Text>
-              <Text variant="muted">
-                {Math.ceil(pace.daysRemaining)} days left. Every mile from here counts. You’ve got this.
-              </Text>
-            </>
-          )}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text variant="label">This week</Text>
+            <Text variant="muted" size={13}>
+              {week.days} {week.days === 1 ? 'day' : 'days'} · {formatMiles(week.distanceM)} mi
+            </Text>
+          </View>
+          <WeekStrip ran={week.ran} today={week.today} />
         </Card>
+      )}
+
+      {rival && (
+        <Pressable onPress={() => router.push('/leaderboard')} accessibilityRole="link">
+          <Card>
+            <Text variant="label">Up ahead</Text>
+            <Text variant="heading">
+              {formatMiles(rival.gapM)} mi behind {rival.standing.profile?.display_name ?? 'the next runner'}
+            </Text>
+            <Text variant="muted">
+              {typicalRunM > 0 && rival.gapM <= typicalRunM ? 'One run closes that gap.' : 'See how the race stands.'}
+            </Text>
+          </Card>
+        </Pressable>
       )}
 
       <View style={{ flexDirection: 'row', gap: Space.sm }}>
