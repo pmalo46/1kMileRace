@@ -10,7 +10,7 @@ describe("quotes", () => {
 
   it("marks every hundred miles, the quarters, and the last stretch", () => {
     expect([...MILESTONE_MILES]).toEqual([
-      1, 100, 200, 250, 300, 400, 500, 600, 700, 750, 800, 900, 950, 975, 990, 995, 1000,
+      1, 50, 100, 200, 250, 300, 400, 500, 600, 700, 750, 800, 900, 950, 975, 990, 995, 1000,
     ]);
   });
 

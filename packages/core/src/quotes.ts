@@ -14,11 +14,12 @@ export interface Quote {
 
 /** Miles at which a runner reaches a milestone. Mirrors milestone_miles() in the database. */
 export const MILESTONE_MILES = [
-  1, 100, 200, 250, 300, 400, 500, 600, 700, 750, 800, 900, 950, 975, 990, 995, 1000,
+  1, 50, 100, 200, 250, 300, 400, 500, 600, 700, 750, 800, 900, 950, 975, 990, 995, 1000,
 ] as const;
 
 const MILESTONE_QUOTES: Record<(typeof MILESTONE_MILES)[number], Quote> = {
   1: { text: "A journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
+  50: { text: "Well begun is half done.", author: "Aristotle" },
   100: { text: "No great thing is created suddenly.", author: "Epictetus" },
   200: { text: "To climb steep hills requires slow pace at first.", author: "William Shakespeare" },
   250: { text: "Slow and steady wins the race.", author: "Aesop" },

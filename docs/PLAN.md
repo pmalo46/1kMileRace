@@ -70,7 +70,7 @@ All distances are stored in **meters**, times in **seconds**, and timestamps as 
 - **race_standings** (kept up to date, streamed via Realtime): race_id, user_id, total_distance_m, total_moving_time_s, activity_count, `finished_at`, `finish_moving_time_s`, finish_rank, time_rank, last_activity_at, streak_days, `required_daily_m` (pace needed to finish)
 - **feed_items**: race_id, actor_id, type (`activity | milestone | finish | joined | cheer_wave`), payload, created_at
 - **cheers** (reactions) and **comments** on feed items
-- **milestones**: 1st mile, every 100 miles, 250, 750, then 950, 975, 990, 995 and 1,000, each with its own quote; plus streaks. Created automatically and turned into feed items and share cards.
+- **milestones**: 1st mile, 50, every 100 miles, 250, 750, then 950, 975, 990, 995 and 1,000, each with its own quote; plus streaks. Created automatically and turned into feed items and share cards.
 - **push_tokens** and **notifications**
 
 **How standings get computed:** an activity enters through the `ingest-activity` edge function, which validates it with the rules engine, deduplicates it and inserts it. A trigger then calls `recompute_standing(race_id, user_id)`, and Realtime pushes the updated standings rows to everyone watching.

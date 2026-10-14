@@ -33,6 +33,7 @@ describe("milestones ahead", () => {
     expect(next.miles).toBe(200);
     expect(next.toGoM).toBeCloseTo(milesToMeters(89.7));
     expect(nextMilestone(0, GOAL)!.miles).toBe(1);
+    expect(nextMilestone(milesToMeters(10.3), GOAL)!.miles).toBe(50);
     expect(nextMilestone(milesToMeters(996), GOAL)!.miles).toBe(1000);
     expect(nextMilestone(GOAL, GOAL)).toBeNull();
   });
