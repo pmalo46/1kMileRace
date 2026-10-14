@@ -21,6 +21,9 @@ Units: distances are stored in meters (what every device and API reports) and sh
 
 ## Getting started
 
+New to the project? [CONTRIBUTING.md](CONTRIBUTING.md) walks through setup, running the app on your phone, and how changes get in.
+
+
 ```bash
 npm install
 npm test          # core + database tests
