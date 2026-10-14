@@ -1,19 +1,27 @@
-import { distanceBoard, formatDuration, formatMiles, timeBoard } from '@1k/core';
+import { distanceBoard, formatDuration, formatMiles, placeChanges, rivalAhead, timeBoard } from '@1k/core';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
 import { ProgressBar } from '@/components/progress-bar';
+import { Segmented } from '@/components/segmented';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
+import { useRaceWeek } from '@/lib/momentum';
 import { useStandings } from '@/lib/races';
 import type { Standing } from '@/lib/types';
-import { Medal, Radius, Space } from '@/theme/tokens';
+import { Medal, Space } from '@/theme/tokens';
 import { useTheme } from '@/theme/use-theme';
 
-type Board = 'distance' | 'time';
+type Board = 'race' | 'week' | 'time';
+
+const BOARDS = [
+  { value: 'race', label: 'The race' },
+  { value: 'week', label: 'This week' },
+  { value: 'time', label: 'Fastest' },
+] as const;
 
 interface Row {
   standing: Standing;
@@ -21,35 +29,105 @@ interface Row {
   primary: string;
   secondary: string;
   progress: number;
+  /** Places gained (+) or lost (-) since this morning; only on the race board. */
+  moved: number;
+  ranToday: boolean;
 }
+
+const nameOf = (s: Standing) => s.profile?.display_name ?? 'Runner';
 
 export default function Leaderboard() {
   const { colors } = useTheme();
   const { session } = useAuth();
   const { race } = useActiveRace();
-  const { standings, refresh } = useStandings(race?.id);
-  const [board, setBoard] = useState<Board>('distance');
+  const { standings, refresh: refreshStandings } = useStandings(race?.id);
+  const { raceWeek, refresh: refreshWeek } = useRaceWeek(race?.id);
+  const [board, setBoard] = useState<Board>('race');
   const goalM = race?.goal_m ?? 1;
+  const userId = session?.user.id;
 
   const rows: Row[] = useMemo(() => {
     if (!standings) return [];
-    if (board === 'distance') {
+    const todayM = raceWeek?.todayM ?? new Map<string, number>();
+    const ranToday = (s: Standing) => (todayM.get(s.user_id) ?? 0) > 0;
+
+    if (board === 'race') {
+      const moved = placeChanges(standings, todayM);
       return distanceBoard(standings).map(({ standing, place, finished }) => ({
         standing,
         place,
         primary: `${formatMiles(standing.counted_distance_m)} mi`,
         secondary: finished ? 'Finished 🏁' : `${formatMiles(goalM - standing.counted_distance_m)} to go`,
         progress: standing.counted_distance_m / goalM,
+        moved: moved.get(standing.user_id) ?? 0,
+        ranToday: ranToday(standing),
       }));
     }
+
+    if (board === 'week') {
+      const weekM = raceWeek?.weekM ?? new Map<string, number>();
+      const ranked = standings
+        .map((standing) => ({ standing, m: weekM.get(standing.user_id) ?? 0 }))
+        .sort((a, b) => b.m - a.m);
+      const best = ranked[0]?.m ?? 0;
+      return ranked.map(({ standing, m }, i) => ({
+        standing,
+        // Tied runners share a place; nobody places on a week they haven't run in.
+        place: m > 0 ? ranked.findIndex((r) => r.m === m) + 1 : null,
+        primary: `${formatMiles(m)} mi`,
+        secondary: m > 0 ? (i === 0 ? 'Leading the week' : `${formatMiles(best - m)} off the lead`) : 'No miles yet this week',
+        progress: best > 0 ? m / best : 0,
+        moved: 0,
+        ranToday: ranToday(standing),
+      }));
+    }
+
     return timeBoard(standings, goalM).map(({ standing, place, timeS, projected }) => ({
       standing,
       place,
       primary: timeS == null ? '–' : formatDuration(timeS),
       secondary: projected ? 'Projected at current pace' : 'Official moving time',
       progress: standing.counted_distance_m / goalM,
+      moved: 0,
+      ranToday: ranToday(standing),
     }));
-  }, [standings, board, goalM]);
+  }, [standings, raceWeek, board, goalM]);
+
+  const callout = useMemo(() => {
+    if (!standings || !userId) return null;
+    const me = standings.find((s) => s.user_id === userId);
+    if (!me) return null;
+
+    if (board === 'week') {
+      const mine = rows.find((r) => r.standing.user_id === userId);
+      const leader = rows[0];
+      if (!mine || !leader || leader.progress === 0) return { title: 'A fresh week', body: 'The first run of the week takes the lead.' };
+      if (leader.standing.user_id === userId) return { title: 'You’re leading the week', body: 'It resets every Monday.' };
+      return { title: `${mine.secondary}`, body: `${nameOf(leader.standing)} is in front this week. It resets every Monday.` };
+    }
+
+    if (board === 'time') return null;
+    if (me.finished_at) return { title: 'You’ve finished', body: 'Go cheer the others home.' };
+    const rival = rivalAhead(standings, userId);
+    const typicalRunM = me.activity_count ? me.total_distance_m / me.activity_count : 0;
+    if (rival) {
+      return {
+        title: `${formatMiles(rival.gapM)} mi behind ${nameOf(rival.standing)}`,
+        body: typicalRunM > 0 && rival.gapM <= typicalRunM ? 'One run closes that gap.' : 'Every run brings them closer.',
+      };
+    }
+    const chasing = standings
+      .filter((s) => s.user_id !== userId && !s.finished_at)
+      .sort((a, b) => b.counted_distance_m - a.counted_distance_m)[0];
+    return chasing
+      ? {
+          title: 'You’re out in front',
+          body: `${nameOf(chasing)} is ${formatMiles(me.counted_distance_m - chasing.counted_distance_m)} mi back.`,
+        }
+      : null;
+  }, [standings, rows, board, userId]);
+
+  const ranTodayNames = rows.filter((r) => r.ranToday && r.standing.user_id !== userId).map((r) => nameOf(r.standing));
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -57,34 +135,35 @@ export default function Leaderboard() {
         <Text variant="heading" size={28}>
           Leaderboard
         </Text>
-        <View style={{ flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: Radius.pill, padding: 4 }}>
-          {(['distance', 'time'] as const).map((b) => (
-            <Pressable
-              key={b}
-              onPress={() => setBoard(b)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: board === b }}
-              style={{
-                flex: 1,
-                paddingVertical: Space.sm,
-                borderRadius: Radius.pill,
-                alignItems: 'center',
-                backgroundColor: board === b ? colors.surface : 'transparent',
-              }}>
-              <Text style={{ fontWeight: '800' }}>{b === 'distance' ? 'First to 1,000' : 'Fastest 1,000'}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <Segmented options={BOARDS} value={board} onChange={setBoard} />
       </View>
       <FlatList
         data={rows}
         keyExtractor={(r) => r.standing.user_id}
         contentContainerStyle={{ paddingHorizontal: Space.md, gap: Space.sm, paddingBottom: Space.xxl * 2 }}
-        onRefresh={refresh}
+        onRefresh={() => {
+          refreshStandings();
+          refreshWeek();
+        }}
         refreshing={false}
-        renderItem={({ item }) => (
-          <LeaderRow row={item} isMe={item.standing.user_id === session?.user.id} />
-        )}
+        ListHeaderComponent={
+          <View style={{ gap: Space.sm }}>
+            {callout && (
+              <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>
+                <Text variant="heading">{callout.title}</Text>
+                <Text variant="muted">{callout.body}</Text>
+              </Card>
+            )}
+            {ranTodayNames.length > 0 && (
+              <Text variant="muted" size={14} style={{ paddingHorizontal: Space.xs }}>
+                {ranTodayNames.length <= 3
+                  ? `${ranTodayNames.join(', ')} ran today.`
+                  : `${ranTodayNames.length} others ran today.`}
+              </Text>
+            )}
+          </View>
+        }
+        renderItem={({ item }) => <LeaderRow row={item} isMe={item.standing.user_id === userId} />}
         ListEmptyComponent={
           <Text variant="muted" style={{ textAlign: 'center', marginTop: Space.xl }}>
             No one on the board yet. The first mile is the bravest.
@@ -115,10 +194,26 @@ function LeaderRow({ row, isMe }: { row: Row; isMe: boolean }) {
           </Text>
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ fontWeight: '800' }} numberOfLines={1}>
-            {row.standing.profile?.display_name ?? 'Runner'}
-            {isMe ? ' (you)' : ''}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+            <Text style={{ fontWeight: '800', flexShrink: 1 }} numberOfLines={1}>
+              {nameOf(row.standing)}
+              {isMe ? ' (you)' : ''}
+            </Text>
+            {row.moved !== 0 && (
+              <Text
+                size={13}
+                accessibilityLabel={`${row.moved > 0 ? 'Up' : 'Down'} ${Math.abs(row.moved)} since this morning`}
+                style={{ fontWeight: '800', color: row.moved > 0 ? colors.onPace : colors.textMuted }}>
+                {row.moved > 0 ? '▲' : '▼'} {Math.abs(row.moved)}
+              </Text>
+            )}
+            {row.ranToday && (
+              <View
+                accessibilityLabel="Ran today"
+                style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.onPace }}
+              />
+            )}
+          </View>
           <Text variant="muted" size={13}>
             {row.secondary}
           </Text>
@@ -127,7 +222,8 @@ function LeaderRow({ row, isMe }: { row: Row; isMe: boolean }) {
           {row.primary}
         </Text>
       </View>
-      <ProgressBar progress={row.progress} height={6} />
+      {/* Your bar in color, everyone else's in gray: the eye goes to where you stand. */}
+      <ProgressBar progress={row.progress} height={6} muted={!isMe} />
     </Card>
   );
 }
