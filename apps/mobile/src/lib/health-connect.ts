@@ -83,7 +83,8 @@ export function openHealthSettings() {
  * Workouts already decided on, by Health Connect record id, so each is sent to the server
  * once. Kept on the phone; entries outlive the window workouts can be logged in.
  */
-const HANDLED_KEY = 'health-connect:handled';
+// v2: earlier builds also remembered workouts the phone turned away, which hid them for good.
+const HANDLED_KEY = 'health-connect:handled:v2';
 const KEEP_HANDLED_MS = 30 * SECONDS_PER_DAY * 1000;
 
 function loadHandled(): Record<string, number> {
@@ -98,7 +99,41 @@ function loadHandled(): Record<string, number> {
 
 // --- Importing -------------------------------------------------------------------------
 
+/** What became of one workout Health Connect shared. */
+export type WorkoutOutcome =
+  | 'imported'
+  | 'already-logged'
+  /** Imported or turned away on an earlier check. */
+  | 'seen-before'
+  | 'not-run-or-walk'
+  | 'no-distance'
+  | 'not-counted'
+  | 'failed';
+
+/** One workout as Health Connect reported it, for showing the runner what was found. */
+export interface SeenWorkout {
+  id: string;
+  /** The app that recorded it, by name where it's a well-known one. */
+  app: string;
+  startedAt: string;
+  distanceM: number;
+  outcome: WorkoutOutcome;
+  /** Why the rules turned it away, when they did. */
+  reason?: string;
+}
+
+const APP_NAMES: Record<string, string> = {
+  'com.google.android.apps.fitness': 'Google Fit',
+  'com.sec.android.app.shealth': 'Samsung Health',
+  'com.garmin.android.apps.connectmobile': 'Garmin Connect',
+  'com.fitbit.FitbitMobile': 'Fitbit',
+  'com.strava': 'Strava',
+  'com.google.android.apps.healthdata': 'Health Connect',
+};
+
 export interface HealthSync {
+  /** Every workout Health Connect shared from the last week, newest first. */
+  seen: SeenWorkout[];
   /** Runs and walks that now count, newest last. */
   imported: ImportedActivity[];
   /** Already logged, for example the same run was also recorded in the app. */
@@ -115,7 +150,7 @@ export interface HealthSync {
  * and in the app counts once.
  */
 export async function syncHealth(userId: string, toFinishM?: number): Promise<HealthSync> {
-  const summary: HealthSync = { imported: [], alreadyLogged: 0, notCounted: 0, failed: 0 };
+  const summary: HealthSync = { seen: [], imported: [], alreadyLogged: 0, notCounted: 0, failed: 0 };
   const hc = HC;
   if (!hc || (await healthStatus()) !== 'connected') return summary;
 
@@ -130,7 +165,16 @@ export async function syncHealth(userId: string, toFinishM?: number): Promise<He
   for (const record of records) {
     const id = record.metadata?.id;
     const origin = record.metadata?.dataOrigin;
-    if (!id || handled[id] || origin === OUR_PACKAGE) continue;
+    if (!id || origin === OUR_PACKAGE) continue;
+    const seen: SeenWorkout = {
+      id,
+      app: (origin && APP_NAMES[origin]) ?? origin ?? 'Another app',
+      startedAt: record.startTime,
+      distanceM: 0,
+      outcome: 'seen-before',
+    };
+    summary.seen.unshift(seen);
+    if (handled[id]) continue;
 
     const span = { operator: 'between', startTime: record.startTime, endTime: record.endTime } as const;
     // Distance from the app that recorded the workout, so a phone's step count isn't added on top.
@@ -145,6 +189,8 @@ export async function syncHealth(userId: string, toFinishM?: number): Promise<He
       .then((a) => a.EXERCISE_DURATION_TOTAL.inSeconds)
       .catch(() => null);
 
+    seen.distanceM = distanceM ?? 0;
+
     const activity = activityFromHealthSession({
       id,
       exerciseType: record.exerciseType,
@@ -154,34 +200,41 @@ export async function syncHealth(userId: string, toFinishM?: number): Promise<He
       activeS,
       deviceName: [record.metadata?.device?.manufacturer, record.metadata?.device?.model].filter(Boolean).join(' '),
     });
-    // Not a run or walk: nothing to decide, now or later.
     if (!activity) {
-      handled[id] = Date.now();
+      seen.outcome = 'not-run-or-walk';
       continue;
     }
 
-    // The rules run here first so a short walk doesn't cost a round trip.
+    // The rules run here first so a short walk doesn't cost a round trip. Nothing decided
+    // on the phone is remembered: the recording app may still be syncing the distance, so
+    // the workout gets another look next time.
     const parsed = ActivityInput.safeParse(activity);
     const verdict = parsed.success ? evaluateActivity(parsed.data, DEFAULT_RACE_RULES, now, { toFinishM }) : null;
     if (!verdict || verdict.status === 'rejected') {
       summary.notCounted++;
-      handled[id] = Date.now();
+      seen.outcome = activity.distanceM > 0 ? 'not-counted' : 'no-distance';
+      seen.reason = verdict?.issues.find((i) => i.severity === 'reject')?.message;
       continue;
     }
 
     try {
       await logActivity(userId, activity);
       summary.imported.push(activity);
+      seen.outcome = 'imported';
       handled[id] = Date.now();
     } catch (e) {
       if (e instanceof LogError && e.status === 409) {
         summary.alreadyLogged++;
+        seen.outcome = 'already-logged';
         handled[id] = Date.now();
       } else if (e instanceof LogError && e.status === 422) {
         summary.notCounted++;
+        seen.outcome = 'not-counted';
+        seen.reason = e.message;
         handled[id] = Date.now();
       } else {
         summary.failed++;
+        seen.outcome = 'failed';
       }
     }
   }

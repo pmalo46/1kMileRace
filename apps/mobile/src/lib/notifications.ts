@@ -48,7 +48,6 @@ async function ensureChannels(N: NotificationsModule) {
   await N.setNotificationChannelAsync(ACTIVITY_CHANNEL, {
     name: 'Cheers, comments and milestones',
     importance: N.AndroidImportance.HIGH,
-    sound: 'default',
     enableVibrate: true,
     vibrationPattern: [0, 250, 150, 250],
   });
