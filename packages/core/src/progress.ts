@@ -29,6 +29,53 @@ export function paceStatus(totalM: number, race: RaceWindow, now: Date = new Dat
   return { expectedM, aheadByM: totalM - expectedM, requiredDailyM, daysRemaining, finished };
 }
 
+export interface FinishPlan {
+  /** How far each run needs to go, from now on, to finish by the race's end. */
+  perRunM: number;
+  /** The same after a week with no runs, or null once less than a week is left. */
+  afterSkippedWeekM: number | null;
+  /** When the runner finishes at their average daily distance so far. Null before any miles. */
+  projectedFinish: Date | null;
+  /** Projected to finish by the race's end. */
+  onTrack: boolean;
+}
+
+/**
+ * What finishing takes at a given number of runs a week. Null once the goal is reached or
+ * the race is over.
+ */
+export function finishPlan(
+  totalM: number,
+  race: RaceWindow,
+  runsPerWeek: number,
+  now: Date = new Date(),
+): FinishPlan | null {
+  const left = race.goalM - totalM;
+  const daysRemaining = (race.endsAt.getTime() - now.getTime()) / 1000 / SECONDS_PER_DAY;
+  if (left <= 0 || daysRemaining <= 0 || runsPerWeek <= 0) return null;
+
+  const weeksLeft = daysRemaining / 7;
+  const perRunM = left / Math.max(1, weeksLeft * runsPerWeek);
+  const afterSkippedWeekM = weeksLeft > 1 ? left / Math.max(1, (weeksLeft - 1) * runsPerWeek) : null;
+
+  const daysIn = (now.getTime() - race.startsAt.getTime()) / 1000 / SECONDS_PER_DAY;
+  const perDayM = daysIn > 0 && totalM > 0 ? totalM / daysIn : 0;
+  const projectedFinish = perDayM > 0 ? new Date(now.getTime() + (left / perDayM) * SECONDS_PER_DAY * 1000) : null;
+  return {
+    perRunM,
+    afterSkippedWeekM,
+    projectedFinish,
+    onTrack: projectedFinish != null && projectedFinish.getTime() <= race.endsAt.getTime(),
+  };
+}
+
+/** How many times a week someone has run so far, as a whole number from 1 to 7. */
+export function runsPerWeekSoFar(activityCount: number, startsAt: Date, now: Date = new Date()): number {
+  // The first week counts as a whole week, so two runs on day one isn't "14 a week".
+  const weeks = Math.max(1, (now.getTime() - startsAt.getTime()) / 1000 / SECONDS_PER_DAY / 7);
+  return Math.min(7, Math.max(1, Math.round(activityCount / weeks)));
+}
+
 /** Projected moving time for the full goal at the runner's current average pace. */
 export function projectedGoalMovingTimeS(totalM: number, totalMovingS: number, goalM: number): number | null {
   if (totalM <= 0) return null;

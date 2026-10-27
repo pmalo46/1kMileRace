@@ -1,12 +1,10 @@
 import {
-  METERS_PER_MILE,
   MILESTONE_MILES,
   distanceBoard,
   formatMiles,
   formatPace,
   metersToMiles,
   milestoneQuote,
-  nextMilestone,
   paceSecondsPerMile,
   paceStatus,
   quoteOfTheDay,
@@ -18,6 +16,7 @@ import { Pressable, RefreshControl, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { FinishPlanner } from '@/components/finish-planner';
 import { MileWall } from '@/components/mile-wall';
 import { ProgressRing } from '@/components/progress-ring';
 import { Quote } from '@/components/quote';
@@ -70,11 +69,9 @@ export default function Home() {
   const progress = Math.min(1, countedM / goalM) * 100;
   // Under 10% a whole number barely moves, so show a decimal until it does.
   const percent = progress < 10 ? (Math.floor(progress * 10) / 10).toFixed(1) : String(Math.floor(progress));
-  const next = nextMilestone(countedM, goalM);
   const rival = standings && session ? rivalAhead(standings, session.user.id) : null;
   const typicalRunM = me?.activity_count ? me.total_distance_m / me.activity_count : 0;
   const milestones = MILESTONE_MILES.filter((m) => m <= goalMiles);
-  const reached = milestones.filter((m) => m * METERS_PER_MILE <= countedM + 0.5).length;
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
@@ -99,11 +96,13 @@ export default function Home() {
           </Text>
         </View>
         <MileWall goalMiles={goalMiles} filledMiles={metersToMiles(countedM)} milestones={milestones} />
-        <Text variant="muted">
-          {next
-            ? `${formatMiles(next.toGoM)} mi to the ${next.miles.toLocaleString()}-mile milestone · ${reached} of ${milestones.length} reached`
-            : `All ${milestones.length} milestones reached`}
-        </Text>
+        {race && me && (
+          <FinishPlanner
+            totalM={countedM}
+            race={{ startsAt: new Date(race.starts_at), endsAt: new Date(race.ends_at), goalM }}
+            runs={me.activity_count}
+          />
+        )}
       </Card>
 
       <RecordingStatus />
@@ -124,9 +123,7 @@ export default function Home() {
               <Text variant="muted" style={{ color: pace.aheadByM >= 0 ? colors.onPace : colors.behindPace }}>
                 {pace.aheadByM >= 0
                   ? `${formatMiles(pace.aheadByM)} mi ahead of pace`
-                  : Number.isFinite(pace.requiredDailyM)
-                    ? `${metersToMiles(pace.requiredDailyM).toFixed(1)} mi/day to finish · ${Math.ceil(pace.daysRemaining)} days left`
-                    : 'Every mile counts'}
+                  : `${formatMiles(-pace.aheadByM)} mi behind pace`}
               </Text>
             </>
           )}
