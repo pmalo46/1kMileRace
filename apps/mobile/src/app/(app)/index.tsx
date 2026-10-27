@@ -120,7 +120,7 @@ export default function Home() {
           ) : (
             <>
               <Text variant="label">Today</Text>
-              <Text variant="heading">{week?.ranToday ? 'Done for today ✓' : 'Not yet today'}</Text>
+              <Text variant="heading">{week?.ranToday ? 'Done for today ✓' : 'Nothing logged yet today'}</Text>
               <Text variant="muted" style={{ color: pace.aheadByM >= 0 ? colors.onPace : colors.behindPace }}>
                 {pace.aheadByM >= 0
                   ? `${formatMiles(pace.aheadByM)} mi ahead of pace`
