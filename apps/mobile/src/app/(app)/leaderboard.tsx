@@ -1,4 +1,13 @@
-import { distanceBoard, formatDuration, formatMiles, placeChanges, placeChangesSince, rivalAhead, timeBoard } from '@1k/core';
+import {
+  distanceBoard,
+  formatDuration,
+  formatMiles,
+  metersToMiles,
+  placeChanges,
+  placeChangesSince,
+  rivalAhead,
+  timeBoard,
+} from '@1k/core';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,7 +33,7 @@ type Board = 'race' | 'week' | 'time';
 
 const BOARDS = [
   { value: 'race', label: 'Overall' },
-  { value: 'week', label: 'Week' },
+  { value: 'week', label: 'This week' },
   { value: 'time', label: 'Fastest' },
 ] as const;
 
@@ -75,7 +84,7 @@ export default function Leaderboard() {
         standing,
         place,
         primary: `${formatMiles(standing.counted_distance_m)} mi`,
-        secondary: finished ? 'Finished 🏁' : `${formatMiles(goalM - standing.counted_distance_m)} to go`,
+        secondary: finished ? 'Finished 🏁' : `${formatMiles(goalM - standing.counted_distance_m)} mi to go`,
         progress: standing.counted_distance_m / goalM,
         moved: moved.get(standing.user_id) ?? 0,
         ranToday: ranToday(standing),
@@ -93,7 +102,8 @@ export default function Leaderboard() {
         // Tied runners share a place; nobody places on a week they haven't run in.
         place: m > 0 ? ranked.findIndex((r) => r.m === m) + 1 : null,
         primary: `${formatMiles(m)} mi`,
-        secondary: m > 0 ? (i === 0 ? 'Leading' : `${formatMiles(best - m)} off the lead`) : 'No miles yet',
+        secondary:
+          m > 0 ? (i === 0 ? 'Leading this week' : `${formatMiles(best - m)} mi off the lead`) : 'No miles this week',
         progress: best > 0 ? m / best : 0,
         moved: 0,
         ranToday: ranToday(standing),
@@ -104,7 +114,7 @@ export default function Leaderboard() {
       standing,
       place,
       primary: timeS == null ? '–' : formatDuration(timeS),
-      secondary: projected ? 'Projected' : 'Official',
+      secondary: projected ? 'Projected at current pace' : 'Official finish time',
       progress: standing.counted_distance_m / goalM,
       moved: 0,
       ranToday: ranToday(standing),
@@ -127,19 +137,26 @@ export default function Leaderboard() {
     if (board === 'week') {
       const mine = rows.find((r) => r.standing.user_id === userId);
       const leader = rows[0];
-      if (!mine || !leader || leader.progress === 0) return { title: 'New week', body: 'Resets Monday' };
-      if (leader.standing.user_id === userId) return { title: 'You’re leading the week', body: 'Resets Monday' };
-      return { title: mine.secondary, body: `${nameOf(leader.standing)} leads · resets Monday` };
+      if (!mine || !leader || leader.progress === 0) {
+        return { title: 'New week', body: 'The first run of the week takes the lead' };
+      }
+      if (leader.standing.user_id === userId) return { title: 'You’re leading the week', body: 'Resets every Monday' };
+      return { title: mine.secondary, body: `${nameOf(leader.standing)} leads · resets every Monday` };
     }
 
-    if (board === 'time') return null;
+    if (board === 'time') {
+      return {
+        title: `Fastest ${Math.round(metersToMiles(goalM)).toLocaleString()} miles`,
+        body: 'Total moving time. Projected until you finish.',
+      };
+    }
     if (me.finished_at) return { title: 'You finished', body: 'Cheer the others home' };
     const rival = rivalAhead(standings, userId);
     const typicalRunM = me.activity_count ? me.total_distance_m / me.activity_count : 0;
     if (rival) {
       return {
         title: `${formatMiles(rival.gapM)} mi behind ${nameOf(rival.standing)}`,
-        body: typicalRunM > 0 && rival.gapM <= typicalRunM ? 'One run closes it' : null,
+        body: typicalRunM > 0 && rival.gapM <= typicalRunM ? 'One run closes the gap' : null,
       };
     }
     const chasing = standings
@@ -151,7 +168,7 @@ export default function Leaderboard() {
           body: `${nameOf(chasing)} is ${formatMiles(me.counted_distance_m - chasing.counted_distance_m)} mi back`,
         }
       : null;
-  }, [standings, rows, board, userId]);
+  }, [standings, rows, board, userId, goalM]);
 
   const ranTodayNames = rows.filter((r) => r.ranToday && r.standing.user_id !== userId).map((r) => nameOf(r.standing));
 

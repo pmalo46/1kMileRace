@@ -156,7 +156,7 @@ export default function LogRun() {
         {treadmill && (
           <Card>
             <Text variant="label">Treadmill photo</Text>
-            <Text variant="muted">Show distance and time. Only organizers see it.</Text>
+            <Text variant="muted">A photo of the console showing distance and time. Only organizers see it.</Text>
             {photo && (
               <Image
                 source={{ uri: photo.uri }}

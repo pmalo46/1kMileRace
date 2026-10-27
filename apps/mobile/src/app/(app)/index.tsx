@@ -100,8 +100,9 @@ export default function Home() {
         </View>
         <MileWall goalMiles={goalMiles} filledMiles={metersToMiles(countedM)} milestones={milestones} />
         <Text variant="muted">
-          {next ? `${formatMiles(next.toGoM)} mi to ${next.miles.toLocaleString()}` : 'All milestones reached'} ·{' '}
-          {reached}/{milestones.length} gold
+          {next
+            ? `${formatMiles(next.toGoM)} mi to the ${next.miles.toLocaleString()}-mile milestone · ${reached} of ${milestones.length} reached`
+            : `All ${milestones.length} milestones reached`}
         </Text>
       </Card>
 
@@ -165,7 +166,7 @@ export default function Home() {
             <Text variant="heading">
               {formatMiles(rival.gapM)} mi behind {rival.standing.profile?.display_name ?? 'the next runner'}
             </Text>
-            {typicalRunM > 0 && rival.gapM <= typicalRunM && <Text variant="muted">One run closes it</Text>}
+            {typicalRunM > 0 && rival.gapM <= typicalRunM && <Text variant="muted">One run closes the gap</Text>}
           </Card>
         </Pressable>
       )}
@@ -184,7 +185,7 @@ export default function Home() {
         <Text variant="heading">
           {finishers} of {standings?.length ?? 0} finished
         </Text>
-        <Text variant="muted">{formatMiles(combinedM, 0)} miles together</Text>
+        <Text variant="muted">{formatMiles(combinedM, 0)} miles run together</Text>
       </Card>
 
       {race && (
@@ -193,6 +194,7 @@ export default function Home() {
           <Text variant="display" size={32} selectable>
             {race.invite_code}
           </Text>
+          <Text variant="muted">Share it so friends can join.</Text>
         </Card>
       )}
     </Screen>

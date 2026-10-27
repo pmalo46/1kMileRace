@@ -112,7 +112,7 @@ export function Logged({ result, miles }: { result: LogResult; miles: string }) 
 
       <Text variant="muted" style={{ textAlign: 'center' }}>
         {races ? `Counted toward ${races}` : 'Saved, but outside your race dates'}
-        {result.evaluation.status === 'flagged' ? ' · Flagged for review' : ''}
+        {result.evaluation.status === 'flagged' ? ' · Counts while an organizer reviews it' : ''}
       </Text>
       <Button title="Done" onPress={() => router.back()} />
     </Screen>

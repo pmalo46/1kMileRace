@@ -365,7 +365,7 @@ function Celebration({ onKeepGoing, onFinish }: { onKeepGoing: () => void; onFin
           />
         </View>
         <View style={{ gap: Space.sm }}>
-          <Button title="Keep going" variant="secondary" onPress={onKeepGoing} />
+          <Button title="Keep going for bonus miles" variant="secondary" onPress={onKeepGoing} />
           <Button title="Finish run" variant="secondary" onPress={onFinish} />
         </View>
       </Screen>
