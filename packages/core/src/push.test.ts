@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cheerPush, commentPush, milestonePush, ownMilestonePush } from "./push.ts";
+import { cheerPush, commentPush, milestonePush, overtakePush, ownMilestonePush } from "./push.ts";
 import { milesToMeters } from "./units.ts";
 
 const run = { id: "f1", type: "activity" as const, activity: { type: "run" as const, distanceM: milesToMeters(3.25) } };
@@ -28,6 +28,10 @@ describe("push messages", () => {
     expect(commentPush("Sam", "Nice work!", run, false).title).toBe("Sam also commented");
   });
 
+  it("says a GIF was sent when a comment has no words", () => {
+    expect(commentPush("Sam", "", run, true).body).toBe("Sent a GIF");
+  });
+
   it("trims long comments", () => {
     const { body } = commentPush("Sam", "a".repeat(500), run, true);
     expect(body).toHaveLength(140);
@@ -43,7 +47,7 @@ describe("push messages", () => {
     expect(milestonePush("Ann", "milestone", 1, "Neighborhood 1K").title).toBe("Ann hit 1 mile 🎉");
     expect(milestonePush("Ann", "finish", 1000, "Neighborhood 1K")).toEqual({
       title: "Ann finished Neighborhood 1K! 🏁",
-      body: "All 1,000 miles. Go say congratulations.",
+      body: "All 1,000 miles. Send congratulations.",
       url: "/feed",
     });
   });
@@ -59,5 +63,22 @@ describe("push messages", () => {
       body: "“Great is the art of beginning, but greater the art is of ending.” — Henry Wadsworth Longfellow",
       url: "/",
     });
+  });
+});
+
+describe("overtake pushes", () => {
+  it("tells you who moved past you and invites a cheer", () => {
+    expect(overtakePush("Sam", "run", milesToMeters(0.35), "Fall 1K", "f9")).toEqual({
+      title: "Sam ran past you 🏃",
+      body: "0.3 mi apart in Fall 1K. Send a cheer.",
+      url: "/comments?item=f9",
+    });
+  });
+
+  it("speaks of walks as walks, and of tiny gaps kindly", () => {
+    const push = overtakePush("Sam", "walk", 50, "Fall 1K", null);
+    expect(push.title).toBe("Sam walked past you 🚶");
+    expect(push.body).toBe("Neck and neck in Fall 1K. Send a cheer.");
+    expect(push.url).toBe("/leaderboard");
   });
 });

@@ -1,12 +1,10 @@
 import {
-  METERS_PER_MILE,
   MILESTONE_MILES,
   distanceBoard,
   formatMiles,
   formatPace,
   metersToMiles,
   milestoneQuote,
-  nextMilestone,
   paceSecondsPerMile,
   paceStatus,
   quoteOfTheDay,
@@ -18,16 +16,19 @@ import { Pressable, RefreshControl, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { FinishPlanner } from '@/components/finish-planner';
 import { MileWall } from '@/components/mile-wall';
 import { ProgressRing } from '@/components/progress-ring';
 import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
+import { SinceLastLookTeaser } from '@/components/since-last-look';
 import { Text } from '@/components/text';
 import { WeekStrip } from '@/components/week-strip';
 import { useActiveRace, useToFinishM } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
 import { greeting } from '@/lib/greeting';
 import { healthStatus, syncHealth } from '@/lib/health-connect';
+import { useSinceLastLook } from '@/lib/last-look';
 import { useMyWeek } from '@/lib/momentum';
 import { useStandings } from '@/lib/races';
 import { currentRecording, unsyncedRecordings, uploadRecording } from '@/lib/recorder';
@@ -41,6 +42,8 @@ export default function Home() {
   const { standings, refresh: refreshStandings } = useStandings(race?.id);
   const { week, refresh: refreshWeek } = useMyWeek(session?.user.id);
   const [refreshing, setRefreshing] = useState(false);
+  // Home only peeks: the leaderboard is where the race has been seen.
+  const { recap } = useSinceLastLook(race?.id, session?.user.id, standings, race?.goal_m ?? 1, { record: false });
 
   const me = standings?.find((s) => s.user_id === session?.user.id);
   const board = useMemo(() => (standings ? distanceBoard(standings) : []), [standings]);
@@ -66,11 +69,9 @@ export default function Home() {
   const progress = Math.min(1, countedM / goalM) * 100;
   // Under 10% a whole number barely moves, so show a decimal until it does.
   const percent = progress < 10 ? (Math.floor(progress * 10) / 10).toFixed(1) : String(Math.floor(progress));
-  const next = nextMilestone(countedM, goalM);
   const rival = standings && session ? rivalAhead(standings, session.user.id) : null;
   const typicalRunM = me?.activity_count ? me.total_distance_m / me.activity_count : 0;
   const milestones = MILESTONE_MILES.filter((m) => m <= goalMiles);
-  const reached = milestones.filter((m) => m * METERS_PER_MILE <= countedM + 0.5).length;
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
@@ -95,34 +96,34 @@ export default function Home() {
           </Text>
         </View>
         <MileWall goalMiles={goalMiles} filledMiles={metersToMiles(countedM)} milestones={milestones} />
-        <Text variant="muted">
-          {next
-            ? `Next milestone at ${next.miles.toLocaleString()} miles: ${formatMiles(next.toGoM)} to go.`
-            : 'Every milestone reached.'}{' '}
-          {reached} of {milestones.length} gold so far.
-        </Text>
+        {race && me && (
+          <FinishPlanner
+            totalM={countedM}
+            race={{ startsAt: new Date(race.starts_at), endsAt: new Date(race.ends_at), goalM }}
+            runs={me.activity_count}
+          />
+        )}
       </Card>
 
       <RecordingStatus />
       <WatchRuns onImported={refreshStandings} />
+      {recap && <SinceLastLookTeaser recap={recap} me={me} />}
 
       {pace && (
         <Card style={!pace.finished && week && !week.ranToday ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>
           {pace.finished ? (
             <>
-              <Text variant="heading">You did it. Every mile. 🏁</Text>
+              <Text variant="heading">You finished 🏁</Text>
               <Quote quote={milestoneQuote(goalMiles)} size={16} />
             </>
           ) : (
             <>
               <Text variant="label">Today</Text>
-              <Text variant="heading">{week?.ranToday ? 'Done for today ✓' : 'Not yet today'}</Text>
+              <Text variant="heading">{week?.ranToday ? 'Done for today ✓' : 'Nothing logged yet today'}</Text>
               <Text variant="muted" style={{ color: pace.aheadByM >= 0 ? colors.onPace : colors.behindPace }}>
                 {pace.aheadByM >= 0
-                  ? `${formatMiles(pace.aheadByM)} miles ahead of pace. Keep this rhythm and you’ll finish early.`
-                  : Number.isFinite(pace.requiredDailyM)
-                    ? `${metersToMiles(pace.requiredDailyM).toFixed(1)} miles a day gets you there, with ${Math.ceil(pace.daysRemaining)} days left.`
-                    : 'Every mile from here still counts.'}
+                  ? `${formatMiles(pace.aheadByM)} mi ahead of pace`
+                  : `${formatMiles(-pace.aheadByM)} mi behind pace`}
               </Text>
             </>
           )}
@@ -133,12 +134,12 @@ export default function Home() {
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: Space.lg }}>
         <Pressable onPress={() => router.push('/log-run')} accessibilityRole="link" style={{ padding: Space.xs }}>
           <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
-            Add a run by hand
+            Log manually
           </Text>
         </Pressable>
         <Pressable onPress={() => router.push('/health')} accessibilityRole="link" style={{ padding: Space.xs }}>
           <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
-            Runs from your watch
+            Sync watch
           </Text>
         </Pressable>
       </View>
@@ -162,9 +163,7 @@ export default function Home() {
             <Text variant="heading">
               {formatMiles(rival.gapM)} mi behind {rival.standing.profile?.display_name ?? 'the next runner'}
             </Text>
-            <Text variant="muted">
-              {typicalRunM > 0 && rival.gapM <= typicalRunM ? 'One run closes that gap.' : 'See how the race stands.'}
-            </Text>
+            {typicalRunM > 0 && rival.gapM <= typicalRunM && <Text variant="muted">One run closes the gap</Text>}
           </Card>
         </Pressable>
       )}
@@ -183,16 +182,16 @@ export default function Home() {
         <Text variant="heading">
           {finishers} of {standings?.length ?? 0} finished
         </Text>
-        <Text variant="muted">{formatMiles(combinedM, 0)} miles run and walked as a crew so far.</Text>
+        <Text variant="muted">{formatMiles(combinedM, 0)} miles run as a team</Text>
       </Card>
 
       {race && (
         <Card>
-          <Text variant="label">Invite friends</Text>
-          <Text variant="muted">Share this code so they can join {race.name}:</Text>
+          <Text variant="label">Invite code</Text>
           <Text variant="display" size={32} selectable>
             {race.invite_code}
           </Text>
+          <Text variant="muted">Share it so friends can join.</Text>
         </Card>
       )}
     </Screen>
@@ -240,7 +239,6 @@ function RecordingStatus() {
         <Text variant="heading">
           {waiting} recorded {waiting === 1 ? 'run' : 'runs'} waiting to upload
         </Text>
-        <Text variant="muted">Saved on your phone. They’ll upload when you’re online.</Text>
         <Button title="Upload now" variant="secondary" onPress={uploadAll} loading={uploading} />
       </Card>
     );
@@ -282,9 +280,8 @@ function WatchRuns({ onImported }: { onImported: () => void }) {
   return (
     <Card>
       <Text variant="heading">
-        Added {added.count} {added.count === 1 ? 'workout' : 'workouts'} from your watch
+        Synced {added.count} {added.count === 1 ? 'workout' : 'workouts'} · {added.miles} mi
       </Text>
-      <Text variant="muted">{added.miles} miles, picked up from Health Connect.</Text>
     </Card>
   );
 }
@@ -313,13 +310,10 @@ function NoRaceYet() {
           Your 1,000 miles start here
         </Text>
         <Quote quote={milestoneQuote(1)} align="center" />
-        <Text variant="muted" style={{ textAlign: 'center' }}>
-          Join a friend’s race with an invite code, or start one and bring your people.
-        </Text>
       </View>
       <View style={{ gap: Space.sm, marginTop: Space.lg }}>
         <Button title="Join a race" onPress={() => router.push('/join')} />
-        <Button title="Start a new race" variant="secondary" onPress={() => router.push('/create-race')} />
+        <Button title="Start a race" variant="secondary" onPress={() => router.push('/create-race')} />
       </View>
     </Screen>
   );

@@ -25,7 +25,6 @@ export default function Join() {
       <Text variant="heading" size={28}>
         Join a race
       </Text>
-      <Text variant="muted">Enter the invite code your organizer shared with you.</Text>
       <Field label="Invite code" value={code} onChangeText={setCode} autoCapitalize="none" autoCorrect={false} />
       <Button title="Join" onPress={join} loading={busy} disabled={code.trim().length < 4} />
     </Screen>

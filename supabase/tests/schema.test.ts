@@ -281,6 +281,29 @@ describe("row level security", () => {
     ).rejects.toThrow(/row-level security/);
     expect(await db.as(ann, `select * from comments`)).toHaveLength(1);
   });
+
+  it("takes a GIPHY GIF in a comment, with or without words, and nothing else", async () => {
+    await logRun(ann, "2026-03-01T12:00:00Z", 5);
+    const [item] = await db.q<{ id: string }>(`select id from feed_items where type = 'activity'`);
+    const comment = (body: string, url: string | null) =>
+      db.as(
+        bo,
+        `insert into comments (feed_item_id, user_id, body, gif_id, gif_url, gif_width, gif_height)
+         values ($1, auth.uid(), $2, case when $3::text is null then null else 'abc123' end, $3,
+                 case when $3::text is null then null else 200 end, case when $3::text is null then null else 150 end)`,
+        [item!.id, body, url],
+      );
+    await comment("", "https://media2.giphy.com/media/abc123/200w.webp");
+    await comment("Go Ann!", "https://media.giphy.com/media/abc123/200w.gif");
+    await expect(comment("", null)).rejects.toThrow(/comments_not_empty/);
+    await expect(comment("", "https://example.com/abc123.gif")).rejects.toThrow(/gif_url_check/);
+    await expect(
+      db.as(bo, `insert into comments (feed_item_id, user_id, body, gif_id) values ($1, auth.uid(), 'Hi', 'abc123')`, [
+        item!.id,
+      ]),
+    ).rejects.toThrow(/comments_gif_complete/);
+    expect(await db.as(ann, `select * from comments`)).toHaveLength(2);
+  });
 });
 
 describe("push tokens", () => {

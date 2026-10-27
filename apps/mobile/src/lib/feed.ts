@@ -1,3 +1,4 @@
+import type { Gif } from '@1k/core';
 import { useCallback, useEffect, useState } from 'react';
 
 import { supabase } from './supabase';
@@ -10,7 +11,8 @@ const FEED_ITEM =
   'id, type, actor_id, payload, created_at, actor:profiles!feed_items_actor_id_fkey(display_name, avatar_url), ' +
   'activity:activities(type, environment, distance_m, moving_time_s), cheers(user_id, emoji), comments(count)';
 
-const COMMENT = 'id, feed_item_id, user_id, body, created_at, author:profiles(display_name)';
+const COMMENT =
+  'id, feed_item_id, user_id, body, gif_id, gif_url, gif_width, gif_height, created_at, author:profiles(display_name)';
 
 /** Asks the server to push-notify the people a new cheer or comment concerns. Best effort. */
 function notify(body: { kind: 'cheer'; feedItemId: string; emoji: string } | { kind: 'comment'; commentId: string }) {
@@ -124,11 +126,16 @@ export function useComments(feedItemId: string | undefined) {
   }, [feedItemId, refresh]);
 
   const add = useCallback(
-    async (body: string, userId: string) => {
+    async (body: string, userId: string, gif: Gif | null = null) => {
       if (!feedItemId) throw new Error('This post is no longer available.');
       const { data, error } = await supabase
         .from('comments')
-        .insert({ feed_item_id: feedItemId, user_id: userId, body })
+        .insert({
+          feed_item_id: feedItemId,
+          user_id: userId,
+          body,
+          ...(gif ? { gif_id: gif.id, gif_url: gif.url, gif_width: gif.width, gif_height: gif.height } : {}),
+        })
         .select(COMMENT)
         .single();
       if (error) throw new Error(error.message);

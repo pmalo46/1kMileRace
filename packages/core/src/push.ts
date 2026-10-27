@@ -1,5 +1,5 @@
 import { formatQuote, milestoneQuote } from "./quotes.ts";
-import { formatMiles } from "./units.ts";
+import { METERS_PER_MILE, formatMiles } from "./units.ts";
 
 /** A push notification before it's addressed to anyone. `url` is the in-app route it opens. */
 export interface PushMessage {
@@ -35,9 +35,9 @@ export function cheerPush(cheerer: string, emoji: string, item: FeedItemSummary)
   return { title: `${cheerer} cheered ${emoji}`, body: `For ${yours(item)}.`, url: commentsUrl(item.id) };
 }
 
-/** Sent to the person a feed item is about, and to others already in the thread. */
+/** Sent to the person a feed item is about, and to others already in the thread. An empty body is a GIF. */
 export function commentPush(author: string, body: string, item: FeedItemSummary, toOwner: boolean): PushMessage {
-  const text = body.trim().replace(/\s+/g, " ");
+  const text = body.trim().replace(/\s+/g, " ") || "Sent a GIF";
   return {
     title: toOwner ? `${author} commented on ${yours(item)}` : `${author} also commented`,
     body: text.length > BODY_LIMIT ? `${text.slice(0, BODY_LIMIT - 1).trimEnd()}…` : text,
@@ -51,7 +51,7 @@ const milesLabel = (miles: number) => `${miles.toLocaleString("en-US")} ${miles 
 export function milestonePush(runner: string, kind: "milestone" | "finish", miles: number, race: string): PushMessage {
   const distance = milesLabel(miles);
   return kind === "finish"
-    ? { title: `${runner} finished ${race}! 🏁`, body: `All ${distance}. Go say congratulations.`, url: "/feed" }
+    ? { title: `${runner} finished ${race}! 🏁`, body: `All ${distance}. Send congratulations.`, url: "/feed" }
     : { title: `${runner} hit ${distance} 🎉`, body: `Send a cheer in ${race}.`, url: "/feed" };
 }
 
@@ -59,4 +59,23 @@ export function milestonePush(runner: string, kind: "milestone" | "finish", mile
 export function ownMilestonePush(kind: "milestone" | "finish", miles: number, race: string): PushMessage {
   const title = kind === "finish" ? `You finished ${race}! 🏁` : `You hit ${milesLabel(miles)} 🎉`;
   return { title, body: formatQuote(milestoneQuote(miles)), url: "/" };
+}
+
+/**
+ * Sent to someone a runner just moved past. A nudge to cheer them, and a reminder that
+ * the gap is one run, not a ranking.
+ */
+export function overtakePush(
+  runner: string,
+  type: "run" | "walk",
+  gapM: number,
+  race: string,
+  feedItemId: string | null,
+): PushMessage {
+  const gap = gapM < METERS_PER_MILE / 10 ? "Neck and neck" : `${formatMiles(gapM)} mi apart`;
+  return {
+    title: `${runner} ${type === "walk" ? "walked" : "ran"} past you ${type === "walk" ? "🚶" : "🏃"}`,
+    body: `${gap} in ${race}. Send a cheer.`,
+    url: feedItemId ? commentsUrl(feedItemId) : "/leaderboard",
+  };
 }

@@ -49,9 +49,7 @@ export default function CreateRace() {
       <Text variant="heading" size={28}>
         Start a race
       </Text>
-      <Text variant="muted">
-        Everyone gets 365 days from the start date to reach 1,000 miles. You’ll get an invite code to share.
-      </Text>
+      <Text variant="muted">365 days to run 1,000 miles.</Text>
       <Field label="Race name" value={name} onChangeText={setName} placeholder="Neighborhood 1K" maxLength={80} />
       <Field label="Start date" value={start} onChangeText={setStart} placeholder="YYYY-MM-DD" />
       <Button title="Create race" onPress={create} loading={busy} disabled={!name.trim()} />

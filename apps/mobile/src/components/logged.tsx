@@ -104,19 +104,15 @@ export function Logged({ result, miles }: { result: LogResult; miles: string }) 
           <Text variant="heading">
             {formatMiles(next.toGoM)} miles to {next.miles.toLocaleString()}
           </Text>
-          <Text variant="muted">
-            {runsToNext === 1 ? 'One more run like this gets you there.' : `${runsToNext} runs like this one get you there.`}
-          </Text>
+          <Text variant="muted">{runsToNext === 1 ? 'One more run like this' : `${runsToNext} more runs like this`}</Text>
         </Card>
       )}
 
       <Quote quote={quote} align="center" style={{ marginVertical: Space.sm }} />
 
       <Text variant="muted" style={{ textAlign: 'center' }}>
-        {races
-          ? `Counted toward ${races}.`
-          : 'Saved, but it isn’t inside any of your races’ dates, so it doesn’t count toward one yet.'}
-        {result.evaluation.status === 'flagged' ? ' An organizer may take a look; it counts in the meantime.' : ''}
+        {races ? `Counted toward ${races}` : 'Saved, but outside your race dates'}
+        {result.evaluation.status === 'flagged' ? ' · Counts while an organizer reviews it' : ''}
       </Text>
       <Button title="Done" onPress={() => router.back()} />
     </Screen>

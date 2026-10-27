@@ -90,7 +90,7 @@ export function evaluateActivity(
   if (!meetsMinimumDistance(a.distanceM, rules, runner)) {
     reject(
       "too_short",
-      `So close! Activities need at least ${metersToMiles(rules.minDistanceM).toFixed(1)} mile to count.`,
+      `Activities need at least ${metersToMiles(rules.minDistanceM).toFixed(1)} mile to count.`,
     );
   }
   if (!rules.allowedTypes.includes(a.type)) {
@@ -103,7 +103,7 @@ export function evaluateActivity(
   }
   // A watch's own record of a treadmill run stands in for the console photo.
   if (isTreadmill && isHandEntered(a) && rules.requireTreadmillPhoto && a.evidenceCount === 0) {
-    reject("treadmill_photo_required", "Add a photo of the treadmill console showing distance and time.");
+    reject("treadmill_photo_required", "Add a photo of the treadmill console.");
   }
   if (isTreadmill && a.evidenceTakenAt) {
     const t = a.evidenceTakenAt.getTime();
@@ -117,14 +117,14 @@ export function evaluateActivity(
     if (pace < rules.fastestPaceSecPerMile) {
       flag("pace_too_fast", `A ${formatPace(pace)}/mi pace is faster than we expect on foot.`);
     } else if (pace > rules.slowestPaceSecPerMile) {
-      flag("pace_too_slow", `A ${formatPace(pace)}/mi pace looks more like errands than a dedicated walk.`);
+      flag("pace_too_slow", `A ${formatPace(pace)}/mi pace is slower than a walk.`);
     }
   }
   if (a.elapsedTimeS > 0 && a.movingTimeS / a.elapsedTimeS < rules.minMovingRatio) {
     flag("too_much_stopping", "This outing had a lot of stopped time.");
   }
   if (a.mockedLocation) {
-    reject("mock_location", "This run's location came from a fake-GPS app, so it can't count.");
+    reject("mock_location", "Fake GPS detected.");
   }
   if (a.polyline) {
     const routeM = polylineLengthM(a.polyline);
@@ -133,7 +133,7 @@ export function evaluateActivity(
     }
   }
   if (a.source === "manual") {
-    flag("manual_entry", "Entered by hand, so an organizer may take a look.");
+    flag("manual_entry", "Entered by hand.");
   }
 
   if (issues.some((i) => i.severity === "reject")) {

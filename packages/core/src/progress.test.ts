@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isResultOfficial, paceStatus, projectedGoalMovingTimeS } from "./progress.ts";
+import { finishPlan, isResultOfficial, paceStatus, projectedGoalMovingTimeS, runsPerWeekSoFar } from "./progress.ts";
 import { DEFAULT_GOAL_M } from "./types.ts";
 import { formatDuration, formatMiles, formatPace, metersToMiles, milesToMeters } from "./units.ts";
 
@@ -53,5 +53,59 @@ describe("formatting", () => {
     expect(formatDuration(3723)).toBe("1:02:03");
     expect(formatDuration(723)).toBe("12:03");
     expect(formatMiles(milesToMeters(999.99))).toBe("999.9");
+  });
+});
+
+describe("finishPlan", () => {
+  const mid = new Date((race.startsAt.getTime() + race.endsAt.getTime()) / 2);
+
+  it("spreads what's left over the runs still to come", () => {
+    const plan = finishPlan(milesToMeters(500), race, 4, mid)!;
+    const weeksLeft = 182.5 / 7;
+    expect(metersToMiles(plan.perRunM)).toBeCloseTo(500 / (weeksLeft * 4), 5);
+    expect(metersToMiles(plan.afterSkippedWeekM!)).toBeCloseTo(500 / ((weeksLeft - 1) * 4), 5);
+  });
+
+  it("asks more of each run the fewer runs a week there are", () => {
+    const four = finishPlan(milesToMeters(500), race, 4, mid)!.perRunM;
+    const three = finishPlan(milesToMeters(500), race, 3, mid)!.perRunM;
+    expect(three / four).toBeCloseTo(4 / 3, 5);
+  });
+
+  it("projects the finish from the average so far", () => {
+    const ahead = finishPlan(milesToMeters(600), race, 4, mid)!;
+    expect(ahead.onTrack).toBe(true);
+    // 600 miles in half a year is 1,000 in about 0.83 of a year.
+    const atYear = (ahead.projectedFinish!.getTime() - race.startsAt.getTime()) / (race.endsAt.getTime() - race.startsAt.getTime());
+    expect(atYear).toBeCloseTo(500 / 600, 5);
+    expect(finishPlan(milesToMeters(400), race, 4, mid)!.onTrack).toBe(false);
+  });
+
+  it("has no projection before the first mile, and no plan once it's over", () => {
+    const start = finishPlan(0, race, 4, race.startsAt)!;
+    expect(start.projectedFinish).toBeNull();
+    expect(start.onTrack).toBe(false);
+    expect(finishPlan(DEFAULT_GOAL_M, race, 4, mid)).toBeNull();
+    expect(finishPlan(milesToMeters(500), race, 4, race.endsAt)).toBeNull();
+  });
+
+  it("never asks a single run to cover less than all of what's left in the last days", () => {
+    const lastDay = new Date(race.endsAt.getTime() - 86_400_000);
+    const plan = finishPlan(milesToMeters(990), race, 4, lastDay)!;
+    expect(metersToMiles(plan.perRunM)).toBeCloseTo(10, 5);
+    expect(plan.afterSkippedWeekM).toBeNull();
+  });
+});
+
+describe("runsPerWeekSoFar", () => {
+  it("averages runs over the weeks since the start, from 1 to 7", () => {
+    const fourWeeksIn = new Date(race.startsAt.getTime() + 28 * 86_400_000);
+    expect(runsPerWeekSoFar(13, race.startsAt, fourWeeksIn)).toBe(3);
+    expect(runsPerWeekSoFar(0, race.startsAt, fourWeeksIn)).toBe(1);
+    expect(runsPerWeekSoFar(60, race.startsAt, fourWeeksIn)).toBe(7);
+  });
+
+  it("treats the first few days as a full week", () => {
+    expect(runsPerWeekSoFar(2, race.startsAt, new Date(race.startsAt.getTime() + 86_400_000))).toBe(2);
   });
 });
