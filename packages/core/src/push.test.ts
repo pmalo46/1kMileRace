@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cheerPush, commentPush, milestonePush, ownMilestonePush } from "./push.ts";
+import { cheerPush, commentPush, milestonePush, overtakePush, ownMilestonePush } from "./push.ts";
 import { milesToMeters } from "./units.ts";
 
 const run = { id: "f1", type: "activity" as const, activity: { type: "run" as const, distanceM: milesToMeters(3.25) } };
@@ -59,5 +59,22 @@ describe("push messages", () => {
       body: "“Great is the art of beginning, but greater the art is of ending.” — Henry Wadsworth Longfellow",
       url: "/",
     });
+  });
+});
+
+describe("overtake pushes", () => {
+  it("tells you who moved past you and invites a cheer", () => {
+    expect(overtakePush("Sam", { type: "run", distanceM: milesToMeters(4.2) }, milesToMeters(0.35), "Fall 1K", "f9")).toEqual({
+      title: "Sam just ran past you 🏃",
+      body: "Their 4.2 mile run did it, and you're 0.3 mi apart in Fall 1K. Send a cheer, then come find them out there.",
+      url: "/comments?item=f9",
+    });
+  });
+
+  it("speaks of walks as walks, and of tiny gaps kindly", () => {
+    const push = overtakePush("Sam", { type: "walk", distanceM: milesToMeters(2) }, 50, "Fall 1K", null);
+    expect(push.title).toBe("Sam just walked past you 🚶");
+    expect(push.body).toContain("you're a whisker apart");
+    expect(push.url).toBe("/leaderboard");
   });
 });

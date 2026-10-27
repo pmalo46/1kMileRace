@@ -1,14 +1,19 @@
-import { distanceBoard, formatDuration, formatMiles, placeChanges, rivalAhead, timeBoard } from '@1k/core';
-import { useMemo, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { distanceBoard, formatDuration, formatMiles, placeChanges, placeChangesSince, rivalAhead, timeBoard } from '@1k/core';
+import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
 import { ProgressBar } from '@/components/progress-bar';
 import { Segmented } from '@/components/segmented';
+import { SinceLastLook } from '@/components/since-last-look';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
+import { useSinceLastLook } from '@/lib/last-look';
 import { useRaceWeek } from '@/lib/momentum';
 import { useStandings } from '@/lib/races';
 import type { Standing } from '@/lib/types';
@@ -29,7 +34,7 @@ interface Row {
   primary: string;
   secondary: string;
   progress: number;
-  /** Places gained (+) or lost (-) since this morning; only on the race board. */
+  /** Places gained (+) or lost (-) since the last look (or this morning); only on the race board. */
   moved: number;
   ranToday: boolean;
 }
@@ -45,6 +50,19 @@ export default function Leaderboard() {
   const [board, setBoard] = useState<Board>('race');
   const goalM = race?.goal_m ?? 1;
   const userId = session?.user.id;
+  const { before, recap } = useSinceLastLook(race?.id, userId, standings, goalM, { record: true });
+  // Rows open in their old order, then move to where they are now, so you see the race shift.
+  const [settled, setSettled] = useState(false);
+  useFocusEffect(useCallback(() => () => setSettled(false), []));
+  const ready = !!standings && !!before;
+  useEffect(() => {
+    if (!ready || settled) return;
+    const timer = setTimeout(() => {
+      setSettled(true);
+      if (recap?.youPassed.length) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [ready, settled, recap]);
 
   const rows: Row[] = useMemo(() => {
     if (!standings) return [];
@@ -52,7 +70,7 @@ export default function Leaderboard() {
     const ranToday = (s: Standing) => (todayM.get(s.user_id) ?? 0) > 0;
 
     if (board === 'race') {
-      const moved = placeChanges(standings, todayM);
+      const moved = before ? placeChangesSince(before.standings, standings) : placeChanges(standings, todayM);
       return distanceBoard(standings).map(({ standing, place, finished }) => ({
         standing,
         place,
@@ -91,7 +109,15 @@ export default function Leaderboard() {
       moved: 0,
       ranToday: ranToday(standing),
     }));
-  }, [standings, raceWeek, board, goalM]);
+  }, [standings, raceWeek, board, goalM, before]);
+
+  const shown = useMemo(() => {
+    if (settled || !before || board !== 'race') return rows;
+    // Where each runner stood at the last look, ties keeping the board's order.
+    return rows
+      .map((r) => ({ ...r, place: r.place == null ? null : r.place + r.moved }))
+      .sort((a, b) => (a.place ?? Infinity) - (b.place ?? Infinity));
+  }, [rows, settled, before, board]);
 
   const callout = useMemo(() => {
     if (!standings || !userId) return null;
@@ -137,8 +163,9 @@ export default function Leaderboard() {
         </Text>
         <Segmented options={BOARDS} value={board} onChange={setBoard} />
       </View>
-      <FlatList
-        data={rows}
+      <Animated.FlatList
+        data={shown}
+        itemLayoutAnimation={LinearTransition.springify().damping(18)}
         keyExtractor={(r) => r.standing.user_id}
         contentContainerStyle={{ paddingHorizontal: Space.md, gap: Space.sm, paddingBottom: Space.xxl * 2 }}
         onRefresh={() => {
@@ -148,6 +175,9 @@ export default function Leaderboard() {
         refreshing={false}
         ListHeaderComponent={
           <View style={{ gap: Space.sm }}>
+            {recap && before && userId && (
+              <SinceLastLook recap={recap} at={before.at} me={standings?.find((s) => s.user_id === userId)} />
+            )}
             {callout && (
               <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>
                 <Text variant="heading">{callout.title}</Text>
@@ -163,7 +193,9 @@ export default function Leaderboard() {
             )}
           </View>
         }
-        renderItem={({ item }) => <LeaderRow row={item} isMe={item.standing.user_id === userId} />}
+        renderItem={({ item }) => (
+          <LeaderRow row={item} isMe={item.standing.user_id === userId} movedSince={before ? 'you last looked' : 'this morning'} />
+        )}
         ListEmptyComponent={
           <Text variant="muted" style={{ textAlign: 'center', marginTop: Space.xl }}>
             No one on the board yet. The first mile is the bravest.
@@ -174,7 +206,7 @@ export default function Leaderboard() {
   );
 }
 
-function LeaderRow({ row, isMe }: { row: Row; isMe: boolean }) {
+function LeaderRow({ row, isMe, movedSince }: { row: Row; isMe: boolean; movedSince: string }) {
   const { colors } = useTheme();
   const medal = row.place != null && row.place <= 3 ? Medal[row.place as 1 | 2 | 3] : null;
   return (
@@ -202,7 +234,7 @@ function LeaderRow({ row, isMe }: { row: Row; isMe: boolean }) {
             {row.moved !== 0 && (
               <Text
                 size={13}
-                accessibilityLabel={`${row.moved > 0 ? 'Up' : 'Down'} ${Math.abs(row.moved)} since this morning`}
+                accessibilityLabel={`${row.moved > 0 ? 'Up' : 'Down'} ${Math.abs(row.moved)} since ${movedSince}`}
                 style={{ fontWeight: '800', color: row.moved > 0 ? colors.onPace : colors.textMuted }}>
                 {row.moved > 0 ? '▲' : '▼'} {Math.abs(row.moved)}
               </Text>

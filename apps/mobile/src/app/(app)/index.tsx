@@ -22,12 +22,14 @@ import { MileWall } from '@/components/mile-wall';
 import { ProgressRing } from '@/components/progress-ring';
 import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
+import { SinceLastLookTeaser } from '@/components/since-last-look';
 import { Text } from '@/components/text';
 import { WeekStrip } from '@/components/week-strip';
 import { useActiveRace, useToFinishM } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
 import { greeting } from '@/lib/greeting';
 import { healthStatus, syncHealth } from '@/lib/health-connect';
+import { useSinceLastLook } from '@/lib/last-look';
 import { useMyWeek } from '@/lib/momentum';
 import { useStandings } from '@/lib/races';
 import { currentRecording, unsyncedRecordings, uploadRecording } from '@/lib/recorder';
@@ -41,6 +43,8 @@ export default function Home() {
   const { standings, refresh: refreshStandings } = useStandings(race?.id);
   const { week, refresh: refreshWeek } = useMyWeek(session?.user.id);
   const [refreshing, setRefreshing] = useState(false);
+  // Home only peeks: the leaderboard is where the race has been seen.
+  const { recap } = useSinceLastLook(race?.id, session?.user.id, standings, race?.goal_m ?? 1, { record: false });
 
   const me = standings?.find((s) => s.user_id === session?.user.id);
   const board = useMemo(() => (standings ? distanceBoard(standings) : []), [standings]);
@@ -105,6 +109,7 @@ export default function Home() {
 
       <RecordingStatus />
       <WatchRuns onImported={refreshStandings} />
+      {recap && <SinceLastLookTeaser recap={recap} me={me} />}
 
       {pace && (
         <Card style={!pace.finished && week && !week.ranToday ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>

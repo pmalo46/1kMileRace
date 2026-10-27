@@ -11,8 +11,11 @@ import {
   IngestRequest,
   metersToMiles,
   milestonePush,
+  overtakePush,
+  overtakes,
   ownMilestonePush,
   planIngest,
+  type StandingLike,
 } from "@1k/core";
 import { sendPush } from "../_shared/push.ts";
 
@@ -30,6 +33,25 @@ const milestoneItems = (userId: string) =>
     .select("id, race_id, type, payload, race:races(name)")
     .eq("actor_id", userId)
     .in("type", ["milestone", "finish"]);
+
+/** Runs older than this were run well before anyone could be "just" passed, so they move people quietly. */
+const OVERTAKE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+type BoardRow = StandingLike & { race_id: string };
+
+/** Everyone's standings in each race this runner is in, to see who a new run moves them past. */
+async function boardsFor(userId: string): Promise<BoardRow[]> {
+  const { data: mine } = await admin.from("race_standings").select("race_id").eq("user_id", userId);
+  const raceIds = (mine ?? []).map((r) => r.race_id as string);
+  if (raceIds.length === 0) return [];
+  const { data } = await admin
+    .from("race_standings")
+    .select("race_id, user_id, counted_distance_m, counted_moving_time_s, finished_at, finish_moving_time_s")
+    .in("race_id", raceIds);
+  return (data ?? []) as BoardRow[];
+}
+
+const inRace = (rows: BoardRow[], raceId: string) => rows.filter((r) => r.race_id === raceId);
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Use POST." });
@@ -105,6 +127,8 @@ Deno.serve(async (req) => {
   }
 
   const { data: before } = await milestoneItems(user.id);
+  const fresh = Date.now() - activity.endedAt.getTime() < OVERTAKE_WINDOW_MS;
+  const boardsBefore = fresh ? await boardsFor(user.id) : [];
 
   const { data: saved, error } = await admin.rpc("ingest_activity", {
     p_user: user.id,
@@ -118,8 +142,9 @@ Deno.serve(async (req) => {
   // Tell the runner, and the rest of each race, about any milestone or finish this run brought.
   const known = new Set((before ?? []).map((m) => m.id));
   const reached = ((await milestoneItems(user.id)).data ?? []).filter((m) => !known.has(m.id));
+  const { data: profile } = await admin.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
+  const runner = profile?.display_name ?? "A runner";
   if (reached.length > 0) {
-    const { data: profile } = await admin.from("profiles").select("display_name").eq("id", user.id).maybeSingle();
     for (const m of reached) {
       const kind = m.type as "milestone" | "finish";
       const miles = (m.payload as { miles?: number } | null)?.miles ?? 0;
@@ -133,15 +158,45 @@ Deno.serve(async (req) => {
       await sendPush(
         admin,
         (members ?? []).map((r) => r.user_id as string),
-        milestonePush(profile?.display_name ?? "A runner", kind, miles, race),
+        milestonePush(runner, kind, miles, race),
       );
     }
   }
 
   const { data: counted } = await admin
     .from("race_activities")
-    .select("counted_distance_m, race:races(name)")
+    .select("race_id, counted_distance_m, race:races(name)")
     .eq("activity_id", saved.id);
+
+  // Let anyone this run carried the runner past know, so they can cheer it (and lace up).
+  if (fresh && boardsBefore.length > 0) {
+    const boardsAfter = await boardsFor(user.id);
+    for (const c of counted ?? []) {
+      const after = inRace(boardsAfter, c.race_id);
+      const { youPassed } = overtakes(inRace(boardsBefore, c.race_id), after, user.id);
+      if (youPassed.length === 0) continue;
+      const me = after.find((s) => s.user_id === user.id)!;
+      const race = (c.race as unknown as { name: string } | null)?.name ?? "the race";
+      const { data: item } = await admin
+        .from("feed_items")
+        .select("id")
+        .match({ race_id: c.race_id, activity_id: saved.id, type: "activity" })
+        .maybeSingle();
+      for (const passed of youPassed) {
+        await sendPush(
+          admin,
+          [passed.user_id],
+          overtakePush(
+            runner,
+            { type: activity.type, distanceM: c.counted_distance_m },
+            me.counted_distance_m - passed.counted_distance_m,
+            race,
+            item?.id ?? null,
+          ),
+        );
+      }
+    }
+  }
 
   return json(200, {
     activity: saved,
