@@ -43,7 +43,12 @@ export interface Comment {
   id: string;
   feed_item_id: string;
   user_id: string;
+  /** Empty when the comment is only a GIF. */
   body: string;
+  gif_id: string | null;
+  gif_url: string | null;
+  gif_width: number | null;
+  gif_height: number | null;
   created_at: string;
   author: { display_name: string } | null;
 }

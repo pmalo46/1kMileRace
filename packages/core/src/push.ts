@@ -35,9 +35,9 @@ export function cheerPush(cheerer: string, emoji: string, item: FeedItemSummary)
   return { title: `${cheerer} cheered ${emoji}`, body: `For ${yours(item)}.`, url: commentsUrl(item.id) };
 }
 
-/** Sent to the person a feed item is about, and to others already in the thread. */
+/** Sent to the person a feed item is about, and to others already in the thread. An empty body is a GIF. */
 export function commentPush(author: string, body: string, item: FeedItemSummary, toOwner: boolean): PushMessage {
-  const text = body.trim().replace(/\s+/g, " ");
+  const text = body.trim().replace(/\s+/g, " ") || "Sent a GIF";
   return {
     title: toOwner ? `${author} commented on ${yours(item)}` : `${author} also commented`,
     body: text.length > BODY_LIMIT ? `${text.slice(0, BODY_LIMIT - 1).trimEnd()}…` : text,

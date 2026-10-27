@@ -11,3 +11,4 @@ export * from "./quotes.ts";
 export * from "./health.ts";
 export * from "./momentum.ts";
 export * from "./recap.ts";
+export * from "./gifs.ts";

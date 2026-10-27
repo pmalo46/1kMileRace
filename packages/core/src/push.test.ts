@@ -28,6 +28,10 @@ describe("push messages", () => {
     expect(commentPush("Sam", "Nice work!", run, false).title).toBe("Sam also commented");
   });
 
+  it("says a GIF was sent when a comment has no words", () => {
+    expect(commentPush("Sam", "", run, true).body).toBe("Sent a GIF");
+  });
+
   it("trims long comments", () => {
     const { body } = commentPush("Sam", "a".repeat(500), run, true);
     expect(body).toHaveLength(140);
