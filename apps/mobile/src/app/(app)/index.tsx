@@ -185,7 +185,7 @@ export default function Home() {
         <Text variant="heading">
           {finishers} of {standings?.length ?? 0} finished
         </Text>
-        <Text variant="muted">{formatMiles(combinedM, 0)} miles run together</Text>
+        <Text variant="muted">{formatMiles(combinedM, 0)} miles run as a team</Text>
       </Card>
 
       {race && (
