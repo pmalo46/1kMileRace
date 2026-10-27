@@ -57,7 +57,7 @@ export function SinceLastLook({ recap, me }: { recap: Recap<Standing>; me: Stand
   const cheerable = recap.finished.length + recap.milestones.length + recap.joined.length > 0;
   return (
     <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>
-      <Text variant="label">Since you last looked</Text>
+      <Text variant="label">While you were out</Text>
       <Text variant="heading">{headline(recap)}</Text>
       {lines.length > 0 && (
         <View style={{ gap: Space.xs }}>
@@ -84,7 +84,7 @@ export function SinceLastLookTeaser({ recap, me }: { recap: Recap<Standing>; me:
   return (
     <Pressable onPress={() => router.push('/leaderboard')} accessibilityRole="link">
       <Card>
-        <Text variant="label">Since you last looked</Text>
+        <Text variant="label">While you were out</Text>
         <Text variant="heading">{headline(recap)}</Text>
         {first && <Text variant="muted">{`${first.emoji} ${first.text}`}</Text>}
       </Card>
