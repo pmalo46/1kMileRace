@@ -29,7 +29,7 @@ export default function Comments() {
       await add(body, userId);
       setDraft('');
     } catch (e) {
-      Alert.alert('Couldn’t post your comment', e instanceof Error ? e.message : 'Try again.');
+      Alert.alert('Couldn’t post', e instanceof Error ? e.message : 'Try again.');
     }
     setSending(false);
   };
@@ -78,7 +78,7 @@ export default function Comments() {
           }}
           ListEmptyComponent={
             <Text variant="muted" style={{ textAlign: 'center', marginTop: Space.lg }}>
-              {error ? `Couldn’t load comments: ${error}` : comments ? 'No comments yet. Say something kind.' : ' '}
+              {error ? `Couldn’t load comments: ${error}` : comments ? 'No comments yet' : ' '}
             </Text>
           }
         />

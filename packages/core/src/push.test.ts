@@ -43,7 +43,7 @@ describe("push messages", () => {
     expect(milestonePush("Ann", "milestone", 1, "Neighborhood 1K").title).toBe("Ann hit 1 mile 🎉");
     expect(milestonePush("Ann", "finish", 1000, "Neighborhood 1K")).toEqual({
       title: "Ann finished Neighborhood 1K! 🏁",
-      body: "All 1,000 miles. Go say congratulations.",
+      body: "All 1,000 miles. Send congratulations.",
       url: "/feed",
     });
   });
@@ -64,17 +64,17 @@ describe("push messages", () => {
 
 describe("overtake pushes", () => {
   it("tells you who moved past you and invites a cheer", () => {
-    expect(overtakePush("Sam", { type: "run", distanceM: milesToMeters(4.2) }, milesToMeters(0.35), "Fall 1K", "f9")).toEqual({
-      title: "Sam just ran past you 🏃",
-      body: "Their 4.2 mile run did it, and you're 0.3 mi apart in Fall 1K. Send a cheer, then come find them out there.",
+    expect(overtakePush("Sam", "run", milesToMeters(0.35), "Fall 1K", "f9")).toEqual({
+      title: "Sam ran past you 🏃",
+      body: "0.3 mi apart in Fall 1K. Send a cheer.",
       url: "/comments?item=f9",
     });
   });
 
   it("speaks of walks as walks, and of tiny gaps kindly", () => {
-    const push = overtakePush("Sam", { type: "walk", distanceM: milesToMeters(2) }, 50, "Fall 1K", null);
-    expect(push.title).toBe("Sam just walked past you 🚶");
-    expect(push.body).toContain("you're a whisker apart");
+    const push = overtakePush("Sam", "walk", 50, "Fall 1K", null);
+    expect(push.title).toBe("Sam walked past you 🚶");
+    expect(push.body).toBe("Neck and neck in Fall 1K. Send a cheer.");
     expect(push.url).toBe("/leaderboard");
   });
 });

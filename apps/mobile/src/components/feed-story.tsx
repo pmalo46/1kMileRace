@@ -24,7 +24,7 @@ function story(item: FeedItem): { headline: string; detail?: string } {
         .join(' · '),
     };
   }
-  if (item.type === 'finish') return { headline: 'crossed the finish line 🏁', detail: 'Every one of the miles. Done.' };
+  if (item.type === 'finish') return { headline: 'finished 🏁' };
   if (item.type === 'milestone') {
     const miles = item.payload.miles ?? 0;
     return { headline: miles === 1 ? 'logged a first mile 🎉' : `hit ${miles.toLocaleString()} miles 🎉` };

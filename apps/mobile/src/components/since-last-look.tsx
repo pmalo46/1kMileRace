@@ -4,7 +4,7 @@ import { Pressable, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Text } from '@/components/text';
-import { names, since } from '@/lib/last-look';
+import { names } from '@/lib/last-look';
 import type { Standing } from '@/lib/types';
 import { Space } from '@/theme/tokens';
 import { useTheme } from '@/theme/use-theme';
@@ -15,7 +15,7 @@ const nameOf = (s: Standing) => s.profile?.display_name ?? 'Runner';
 function recapLines(recap: Recap<Standing>, me: Standing | undefined): { emoji: string; text: string }[] {
   const lines: { emoji: string; text: string }[] = [];
   if (recap.finished.length > 0) {
-    lines.push({ emoji: '🏁', text: `${names(recap.finished.map(nameOf))} finished. Every single mile.` });
+    lines.push({ emoji: '🏁', text: `${names(recap.finished.map(nameOf))} finished` });
   }
   if (recap.milestones.length === 1) {
     const [{ standing, miles }] = recap.milestones;
@@ -24,13 +24,13 @@ function recapLines(recap: Recap<Standing>, me: Standing | undefined): { emoji: 
     lines.push({ emoji: '🎉', text: `${names(recap.milestones.map((m) => nameOf(m.standing)))} hit milestones` });
   }
   if (recap.joined.length > 0) {
-    lines.push({ emoji: '👋', text: `${names(recap.joined.map(nameOf))} joined the race` });
+    lines.push({ emoji: '👋', text: `${names(recap.joined.map(nameOf))} joined` });
   }
   if (recap.movers.length > 1) {
-    lines.push({ emoji: '👟', text: `${recap.movers.length} of you got out there` });
+    lines.push({ emoji: '👟', text: `${recap.movers.length} of you ran` });
   }
   if (recap.youPassed.length > 0) {
-    lines.push({ emoji: '⬆️', text: `You moved past ${names(recap.youPassed.map(nameOf))}` });
+    lines.push({ emoji: '⬆️', text: `You passed ${names(recap.youPassed.map(nameOf))}` });
   }
   if (recap.passedYou.length === 1) {
     const [them] = recap.passedYou;
@@ -39,25 +39,25 @@ function recapLines(recap: Recap<Standing>, me: Standing | undefined): { emoji: 
       emoji: '💨',
       text:
         me && gapM >= METERS_PER_MILE / 10
-          ? `${nameOf(them)} moved past you, ${formatMiles(gapM)} mi ahead now`
-          : `${nameOf(them)} moved past you`,
+          ? `${nameOf(them)} passed you · ${formatMiles(gapM)} mi ahead`
+          : `${nameOf(them)} passed you`,
     });
   } else if (recap.passedYou.length > 1) {
-    lines.push({ emoji: '💨', text: `${names(recap.passedYou.map(nameOf))} moved past you. Go run with them?` });
+    lines.push({ emoji: '💨', text: `${names(recap.passedYou.map(nameOf))} passed you` });
   }
   return lines;
 }
 
 const headline = (recap: Recap<Standing>) =>
-  recap.crewM >= METERS_PER_MILE / 10 ? `The crew added ${formatMiles(recap.crewM)} miles` : 'New faces in the race';
+  recap.crewM >= METERS_PER_MILE / 10 ? `+${formatMiles(recap.crewM)} miles together` : 'New faces';
 
-export function SinceLastLook({ recap, at, me }: { recap: Recap<Standing>; at: string; me: Standing | undefined }) {
+export function SinceLastLook({ recap, me }: { recap: Recap<Standing>; me: Standing | undefined }) {
   const { colors } = useTheme();
   const lines = recapLines(recap, me);
   const cheerable = recap.finished.length + recap.milestones.length + recap.joined.length > 0;
   return (
     <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>
-      <Text variant="label">Since you last looked · {since(at)}</Text>
+      <Text variant="label">Since you last looked</Text>
       <Text variant="heading">{headline(recap)}</Text>
       {lines.length > 0 && (
         <View style={{ gap: Space.xs }}>
@@ -71,7 +71,7 @@ export function SinceLastLook({ recap, at, me }: { recap: Recap<Standing>; at: s
       )}
       {cheerable && (
         <Pressable onPress={() => router.push('/feed')} accessibilityRole="link" style={{ paddingTop: Space.xs }}>
-          <Text style={{ color: colors.accent, fontWeight: '800' }}>Send them some cheers →</Text>
+          <Text style={{ color: colors.accent, fontWeight: '800' }}>Cheer them →</Text>
         </Pressable>
       )}
     </Card>
@@ -86,9 +86,7 @@ export function SinceLastLookTeaser({ recap, me }: { recap: Recap<Standing>; me:
       <Card>
         <Text variant="label">Since you last looked</Text>
         <Text variant="heading">{headline(recap)}</Text>
-        <Text variant="muted">
-          {first ? `${first.emoji} ${first.text}. ` : ''}See what changed on the leaderboard.
-        </Text>
+        {first && <Text variant="muted">{`${first.emoji} ${first.text}`}</Text>}
       </Card>
     </Pressable>
   );

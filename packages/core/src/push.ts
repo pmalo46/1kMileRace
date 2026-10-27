@@ -51,7 +51,7 @@ const milesLabel = (miles: number) => `${miles.toLocaleString("en-US")} ${miles 
 export function milestonePush(runner: string, kind: "milestone" | "finish", miles: number, race: string): PushMessage {
   const distance = milesLabel(miles);
   return kind === "finish"
-    ? { title: `${runner} finished ${race}! 🏁`, body: `All ${distance}. Go say congratulations.`, url: "/feed" }
+    ? { title: `${runner} finished ${race}! 🏁`, body: `All ${distance}. Send congratulations.`, url: "/feed" }
     : { title: `${runner} hit ${distance} 🎉`, body: `Send a cheer in ${race}.`, url: "/feed" };
 }
 
@@ -67,15 +67,15 @@ export function ownMilestonePush(kind: "milestone" | "finish", miles: number, ra
  */
 export function overtakePush(
   runner: string,
-  activity: { type: "run" | "walk"; distanceM: number },
+  type: "run" | "walk",
   gapM: number,
   race: string,
   feedItemId: string | null,
 ): PushMessage {
-  const gap = gapM < METERS_PER_MILE / 10 ? "a whisker" : `${formatMiles(gapM)} mi`;
+  const gap = gapM < METERS_PER_MILE / 10 ? "Neck and neck" : `${formatMiles(gapM)} mi apart`;
   return {
-    title: `${runner} just ${activity.type === "walk" ? "walked" : "ran"} past you ${activity.type === "walk" ? "🚶" : "🏃"}`,
-    body: `Their ${formatMiles(activity.distanceM)} mile ${activity.type} did it, and you're ${gap} apart in ${race}. Send a cheer, then come find them out there.`,
+    title: `${runner} ${type === "walk" ? "walked" : "ran"} past you ${type === "walk" ? "🚶" : "🏃"}`,
+    body: `${gap} in ${race}. Send a cheer.`,
     url: feedItemId ? commentsUrl(feedItemId) : "/leaderboard",
   };
 }

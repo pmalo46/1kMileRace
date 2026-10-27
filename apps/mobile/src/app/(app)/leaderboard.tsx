@@ -23,8 +23,8 @@ import { useTheme } from '@/theme/use-theme';
 type Board = 'race' | 'week' | 'time';
 
 const BOARDS = [
-  { value: 'race', label: 'The race' },
-  { value: 'week', label: 'This week' },
+  { value: 'race', label: 'Overall' },
+  { value: 'week', label: 'Week' },
   { value: 'time', label: 'Fastest' },
 ] as const;
 
@@ -93,7 +93,7 @@ export default function Leaderboard() {
         // Tied runners share a place; nobody places on a week they haven't run in.
         place: m > 0 ? ranked.findIndex((r) => r.m === m) + 1 : null,
         primary: `${formatMiles(m)} mi`,
-        secondary: m > 0 ? (i === 0 ? 'Leading the week' : `${formatMiles(best - m)} off the lead`) : 'No miles yet this week',
+        secondary: m > 0 ? (i === 0 ? 'Leading' : `${formatMiles(best - m)} off the lead`) : 'No miles yet',
         progress: best > 0 ? m / best : 0,
         moved: 0,
         ranToday: ranToday(standing),
@@ -104,7 +104,7 @@ export default function Leaderboard() {
       standing,
       place,
       primary: timeS == null ? '–' : formatDuration(timeS),
-      secondary: projected ? 'Projected at current pace' : 'Official moving time',
+      secondary: projected ? 'Projected' : 'Official',
       progress: standing.counted_distance_m / goalM,
       moved: 0,
       ranToday: ranToday(standing),
@@ -127,19 +127,19 @@ export default function Leaderboard() {
     if (board === 'week') {
       const mine = rows.find((r) => r.standing.user_id === userId);
       const leader = rows[0];
-      if (!mine || !leader || leader.progress === 0) return { title: 'A fresh week', body: 'The first run of the week takes the lead.' };
-      if (leader.standing.user_id === userId) return { title: 'You’re leading the week', body: 'It resets every Monday.' };
-      return { title: `${mine.secondary}`, body: `${nameOf(leader.standing)} is in front this week. It resets every Monday.` };
+      if (!mine || !leader || leader.progress === 0) return { title: 'New week', body: 'Resets Monday' };
+      if (leader.standing.user_id === userId) return { title: 'You’re leading the week', body: 'Resets Monday' };
+      return { title: mine.secondary, body: `${nameOf(leader.standing)} leads · resets Monday` };
     }
 
     if (board === 'time') return null;
-    if (me.finished_at) return { title: 'You’ve finished', body: 'Go cheer the others home.' };
+    if (me.finished_at) return { title: 'You finished', body: 'Cheer the others home' };
     const rival = rivalAhead(standings, userId);
     const typicalRunM = me.activity_count ? me.total_distance_m / me.activity_count : 0;
     if (rival) {
       return {
         title: `${formatMiles(rival.gapM)} mi behind ${nameOf(rival.standing)}`,
-        body: typicalRunM > 0 && rival.gapM <= typicalRunM ? 'One run closes that gap.' : 'Every run brings them closer.',
+        body: typicalRunM > 0 && rival.gapM <= typicalRunM ? 'One run closes it' : null,
       };
     }
     const chasing = standings
@@ -147,8 +147,8 @@ export default function Leaderboard() {
       .sort((a, b) => b.counted_distance_m - a.counted_distance_m)[0];
     return chasing
       ? {
-          title: 'You’re out in front',
-          body: `${nameOf(chasing)} is ${formatMiles(me.counted_distance_m - chasing.counted_distance_m)} mi back.`,
+          title: 'You’re in front',
+          body: `${nameOf(chasing)} is ${formatMiles(me.counted_distance_m - chasing.counted_distance_m)} mi back`,
         }
       : null;
   }, [standings, rows, board, userId]);
@@ -176,19 +176,19 @@ export default function Leaderboard() {
         ListHeaderComponent={
           <View style={{ gap: Space.sm }}>
             {recap && before && userId && (
-              <SinceLastLook recap={recap} at={before.at} me={standings?.find((s) => s.user_id === userId)} />
+              <SinceLastLook recap={recap} me={standings?.find((s) => s.user_id === userId)} />
             )}
             {callout && (
               <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>
                 <Text variant="heading">{callout.title}</Text>
-                <Text variant="muted">{callout.body}</Text>
+                {callout.body && <Text variant="muted">{callout.body}</Text>}
               </Card>
             )}
             {ranTodayNames.length > 0 && (
               <Text variant="muted" size={14} style={{ paddingHorizontal: Space.xs }}>
                 {ranTodayNames.length <= 3
-                  ? `${ranTodayNames.join(', ')} ran today.`
-                  : `${ranTodayNames.length} others ran today.`}
+                  ? `${ranTodayNames.join(', ')} ran today`
+                  : `${ranTodayNames.length} others ran today`}
               </Text>
             )}
           </View>
@@ -198,7 +198,7 @@ export default function Leaderboard() {
         )}
         ListEmptyComponent={
           <Text variant="muted" style={{ textAlign: 'center', marginTop: Space.xl }}>
-            No one on the board yet. The first mile is the bravest.
+            No runs yet
           </Text>
         }
       />

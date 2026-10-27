@@ -106,7 +106,7 @@ export default function Record() {
     const started = await startRecording(type, toFinishM == null ? undefined : toFinishM - waitingM);
     setBusy(false);
     if (!started) {
-      return Alert.alert('Location needed', 'Recording measures your run with GPS. Allow location access to start.', [
+      return Alert.alert('Location needed', 'Allow location access to record.', [
         { text: 'Not now', style: 'cancel' },
         { text: 'Open Settings', onPress: () => Linking.openSettings() },
       ]);
@@ -133,7 +133,7 @@ export default function Record() {
   };
 
   const discard = () =>
-    Alert.alert('Discard this run?', 'It won’t be saved anywhere.', [
+    Alert.alert('Discard this run?', undefined, [
       { text: 'Keep it', style: 'cancel' },
       {
         text: 'Discard',
@@ -170,8 +170,8 @@ export default function Record() {
     const short = !meetsMinimumDistance(summary.distanceM, DEFAULT_RACE_RULES, { toFinishM });
     if (short) {
       return Alert.alert(
-        'So close!',
-        `Runs need at least 1 mile to count, and you’re at ${formatMiles(summary.distanceM, 2)}. Keep going?`,
+        'Under 1 mile',
+        `Runs need 1 mile to count. You’re at ${formatMiles(summary.distanceM, 2)}.`,
         [
           { text: 'Keep going', style: 'cancel', onPress: () => rec.state === 'paused' && resume() },
           { text: 'Discard run', style: 'destructive', onPress: discard },
@@ -242,7 +242,7 @@ function Ready({
     <Screen scroll={false}>
       <View style={{ flex: 1, gap: Space.md }}>
         <Text variant="heading" size={28}>
-          Ready when you are
+          Record
         </Text>
         <Quote quote={quote} />
         <Segmented
@@ -253,18 +253,7 @@ function Ready({
           value={type}
           onChange={onType}
         />
-        <Card>
-          <Text variant="label">How it works</Text>
-          <Text variant="muted">
-            Your phone measures distance and pace with GPS. Recorded runs are the ones everyone can trust, so they’re
-            the best way to log.
-          </Text>
-          <Text variant="muted">
-            {inExpoGo
-              ? 'Testing in Expo Go: keep the app open and the screen on while you record.'
-              : 'It keeps recording with your screen locked. A notification shows while it’s on.'}
-          </Text>
-        </Card>
+        {inExpoGo && <Text variant="muted">Expo Go: keep the screen on while recording.</Text>}
       </View>
       <View style={{ gap: Space.sm }}>
         <Button title={`Start ${type}`} onPress={onStart} loading={busy} />
@@ -323,10 +312,10 @@ function Active(props: {
         <RouteSketch points={points} height={200} />
       ) : (
         <Card style={{ height: 200, justifyContent: 'center', alignItems: 'center' }}>
-          <Text variant="muted">Finding you on the map…</Text>
+          <Text variant="muted">Finding GPS…</Text>
         </Card>
       )}
-      {weakSignal && points.length > 0 && <Text variant="muted">Weak GPS signal. Head somewhere with open sky.</Text>}
+      {weakSignal && points.length > 0 && <Text variant="muted">Weak GPS signal</Text>}
 
       <View style={{ flex: 1 }} />
       {paused ? (
@@ -374,13 +363,10 @@ function Celebration({ onKeepGoing, onFinish }: { onKeepGoing: () => void; onFin
             tone="onColor"
             style={{ marginTop: Space.md }}
           />
-          <Text size={14} style={{ color: '#fff', textAlign: 'center', marginTop: Space.md }}>
-            Your finish time stopped the moment you crossed. It becomes official when this run uploads.
-          </Text>
         </View>
         <View style={{ gap: Space.sm }}>
-          <Button title="Keep going for bonus miles" variant="secondary" onPress={onKeepGoing} />
-          <Button title="Finish my run" variant="secondary" onPress={onFinish} />
+          <Button title="Keep going" variant="secondary" onPress={onKeepGoing} />
+          <Button title="Finish run" variant="secondary" onPress={onFinish} />
         </View>
       </Screen>
     </LinearGradient>
@@ -405,9 +391,7 @@ function Queued({ message, busy, onRetry }: { message: string; busy: boolean; on
         <Text variant="heading" size={28}>
           Saved on your phone
         </Text>
-        <Text variant="muted">
-          It couldn’t upload just now ({message}). It’s safe here and will upload the next time you open the app.
-        </Text>
+        <Text variant="muted">Upload failed: {message}. It’ll retry next time you open the app.</Text>
       </View>
       <View style={{ gap: Space.sm }}>
         <Button title="Try again" onPress={onRetry} loading={busy} />

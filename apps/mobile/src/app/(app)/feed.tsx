@@ -63,9 +63,9 @@ export default function Feed() {
         ListEmptyComponent={
           <Text variant="muted" style={{ textAlign: 'center', marginTop: Space.xl }}>
             {loaded && !race
-              ? 'Join or start a race and its feed shows up here.'
+              ? 'Join a race to see its feed'
               : items
-                ? 'Quiet so far. Log a run and get it started.'
+                ? 'No activity yet'
                 : ' '}
           </Text>
         }

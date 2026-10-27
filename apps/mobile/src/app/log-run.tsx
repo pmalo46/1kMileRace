@@ -85,7 +85,7 @@ export default function LogRun() {
   const pickPhoto = async (camera: boolean) => {
     if (camera) {
       const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-      if (!granted) return Alert.alert('Camera access needed', 'Allow camera access in Settings, or choose a photo instead.');
+      if (!granted) return Alert.alert('Camera access needed', 'Allow camera access in Settings.');
     }
     const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.6, exif: true };
     const res = camera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
@@ -100,7 +100,7 @@ export default function LogRun() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setResult(res);
     } catch (e) {
-      Alert.alert('That didn’t save', e instanceof Error ? e.message : String(e));
+      Alert.alert('Not saved', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -112,11 +112,7 @@ export default function LogRun() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen>
         <Text variant="heading" size={28}>
-          Add a {kind} by hand
-        </Text>
-        <Text variant="muted">
-          Recording with GPS is the best way to log. Runs added by hand are marked as entered by hand, and organizers
-          may review them.
+          Log a {kind}
         </Text>
         <Segmented
           options={[
@@ -160,7 +156,7 @@ export default function LogRun() {
         {treadmill && (
           <Card>
             <Text variant="label">Treadmill photo</Text>
-            <Text variant="muted">Snap the console showing your distance and time. Organizers can see it; other runners can’t.</Text>
+            <Text variant="muted">Show distance and time. Only organizers see it.</Text>
             {photo && (
               <Image
                 source={{ uri: photo.uri }}

@@ -85,16 +85,6 @@ export function useSinceLastLook(
   return { before, recap };
 }
 
-/** "3 hours ago", "yesterday": how long since the last look. */
-export function since(iso: string, now: Date = new Date()): string {
-  const minutes = (now.getTime() - Date.parse(iso)) / 60_000;
-  if (minutes < 60) return 'a little while ago';
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? 'yesterday' : `${days} days ago`;
-}
-
 /** "Ann", "Ann and Bo", "Ann, Bo and 3 others". */
 export function names(list: string[], shown = 2): string {
   if (list.length <= shown + 1) {

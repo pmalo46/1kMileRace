@@ -63,47 +63,29 @@ export default function Health() {
     <Screen>
       <View style={{ gap: Space.md }}>
         <Text variant="heading" size={28}>
-          Runs from your watch
+          Watch sync
         </Text>
-        <Text variant="muted">
-          If you record with a watch or another app, like Garmin, Fitbit or Samsung Health, 1K Miles can pick those
-          runs and walks up through Health Connect. Nothing to type in.
-        </Text>
+        <Text variant="muted">Import runs from Garmin, Fitbit, Samsung Health and more via Health Connect.</Text>
 
         {status === 'unsupported' && (
           <Card>
             <Text variant="heading">Not available here</Text>
-            <Text variant="muted">
-              This needs Android with Health Connect, and a full build of the app. You can still record a run or add
-              one by hand.
-            </Text>
+            <Text variant="muted">Requires Android and Health Connect.</Text>
           </Card>
         )}
 
         {status === 'needs-install' && (
           <Card>
-            <Text variant="heading">Health Connect needs setting up</Text>
-            <Text variant="muted">Install or update Health Connect from the Play Store, then come back here.</Text>
+            <Text variant="heading">Install Health Connect</Text>
           </Card>
         )}
 
-        {status === 'not-connected' && (
-          <Card>
-            <Text variant="label">What 1K Miles reads</Text>
-            <Text variant="muted">
-              Your workouts and their distance, to count runs and walks toward your race. It never writes anything
-              back, and it reads nothing else.
-            </Text>
-          </Card>
-        )}
+        {status === 'not-connected' && <Text variant="muted">Reads workouts only. Never writes.</Text>}
 
         {status === 'connected' && (
           <Card>
             <Text variant="label">Connected</Text>
-            <Text variant="muted">
-              New runs and walks from the last week are picked up when you open the app. A run you also recorded
-              here counts once.
-            </Text>
+            <Text variant="muted">Syncs the last week each time you open the app.</Text>
           </Card>
         )}
 
@@ -114,12 +96,12 @@ export default function Health() {
         {status === 'needs-install' && (
           <Button title="Open the Play Store" onPress={() => Linking.openURL(HEALTH_CONNECT_STORE)} />
         )}
-        {status === 'not-connected' && <Button title="Connect Health Connect" onPress={connect} loading={busy} />}
-        {status === 'connected' && <Button title="Check for runs now" onPress={sync} loading={busy} />}
+        {status === 'not-connected' && <Button title="Connect" onPress={connect} loading={busy} />}
+        {status === 'connected' && <Button title="Sync now" onPress={sync} loading={busy} />}
         {status === 'connected' && (
           <Pressable onPress={openHealthSettings} accessibilityRole="link" style={{ alignSelf: 'center', padding: Space.xs }}>
             <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
-              Manage access in Health Connect
+              Manage access
             </Text>
           </Pressable>
         )}
@@ -134,10 +116,10 @@ const OUTCOMES: Record<WorkoutOutcome, string> = {
   'already-logged': 'Already logged',
   'seen-before': 'Checked before',
   'not-run-or-walk': 'Not a run or walk',
-  'hand-entered': 'Entered by hand, so not imported',
+  'hand-entered': 'Manual entry, skipped',
   'no-distance': 'No distance recorded',
   'not-counted': 'Didn’t count',
-  failed: 'Couldn’t upload, will retry',
+  failed: 'Upload failed, will retry',
 };
 
 function SyncResult({ result }: { result: HealthSync }) {
@@ -147,19 +129,16 @@ function SyncResult({ result }: { result: HealthSync }) {
     <Card>
       <Text variant="heading">
         {imported.length > 0
-          ? `Added ${imported.length} ${imported.length === 1 ? 'workout' : 'workouts'}, ${formatMiles(miles)} miles`
-          : 'Nothing new to add'}
+          ? `Added ${imported.length} ${imported.length === 1 ? 'workout' : 'workouts'} · ${formatMiles(miles)} mi`
+          : 'Nothing new'}
       </Text>
-      {failed > 0 && <Text variant="muted">{failed} couldn’t upload just now and will be tried again.</Text>}
+      {failed > 0 && <Text variant="muted">{failed} failed, will retry</Text>}
       {seen.length === 0 ? (
-        <Text variant="muted">
-          Health Connect didn’t share any workouts from the last week. If you’ve recorded one, check that the app you
-          recorded it in is set to share with Health Connect.
-        </Text>
+        <Text variant="muted">No workouts this week. Check your app shares with Health Connect.</Text>
       ) : (
         <>
           <Text variant="label" style={{ marginTop: Space.xs }}>
-            What Health Connect shared
+            Workouts found
           </Text>
           {seen.slice(0, 8).map((w) => (
             <View key={w.id} style={{ gap: 2 }}>

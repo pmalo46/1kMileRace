@@ -100,10 +100,8 @@ export default function Home() {
         </View>
         <MileWall goalMiles={goalMiles} filledMiles={metersToMiles(countedM)} milestones={milestones} />
         <Text variant="muted">
-          {next
-            ? `Next milestone at ${next.miles.toLocaleString()} miles: ${formatMiles(next.toGoM)} to go.`
-            : 'Every milestone reached.'}{' '}
-          {reached} of {milestones.length} gold so far.
+          {next ? `${formatMiles(next.toGoM)} mi to ${next.miles.toLocaleString()}` : 'All milestones reached'} ·{' '}
+          {reached}/{milestones.length} gold
         </Text>
       </Card>
 
@@ -115,7 +113,7 @@ export default function Home() {
         <Card style={!pace.finished && week && !week.ranToday ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>
           {pace.finished ? (
             <>
-              <Text variant="heading">You did it. Every mile. 🏁</Text>
+              <Text variant="heading">You finished 🏁</Text>
               <Quote quote={milestoneQuote(goalMiles)} size={16} />
             </>
           ) : (
@@ -124,10 +122,10 @@ export default function Home() {
               <Text variant="heading">{week?.ranToday ? 'Done for today ✓' : 'Not yet today'}</Text>
               <Text variant="muted" style={{ color: pace.aheadByM >= 0 ? colors.onPace : colors.behindPace }}>
                 {pace.aheadByM >= 0
-                  ? `${formatMiles(pace.aheadByM)} miles ahead of pace. Keep this rhythm and you’ll finish early.`
+                  ? `${formatMiles(pace.aheadByM)} mi ahead of pace`
                   : Number.isFinite(pace.requiredDailyM)
-                    ? `${metersToMiles(pace.requiredDailyM).toFixed(1)} miles a day gets you there, with ${Math.ceil(pace.daysRemaining)} days left.`
-                    : 'Every mile from here still counts.'}
+                    ? `${metersToMiles(pace.requiredDailyM).toFixed(1)} mi/day to finish · ${Math.ceil(pace.daysRemaining)} days left`
+                    : 'Every mile counts'}
               </Text>
             </>
           )}
@@ -138,12 +136,12 @@ export default function Home() {
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: Space.lg }}>
         <Pressable onPress={() => router.push('/log-run')} accessibilityRole="link" style={{ padding: Space.xs }}>
           <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
-            Add a run by hand
+            Log manually
           </Text>
         </Pressable>
         <Pressable onPress={() => router.push('/health')} accessibilityRole="link" style={{ padding: Space.xs }}>
           <Text variant="muted" style={{ textDecorationLine: 'underline' }}>
-            Runs from your watch
+            Sync watch
           </Text>
         </Pressable>
       </View>
@@ -167,9 +165,7 @@ export default function Home() {
             <Text variant="heading">
               {formatMiles(rival.gapM)} mi behind {rival.standing.profile?.display_name ?? 'the next runner'}
             </Text>
-            <Text variant="muted">
-              {typicalRunM > 0 && rival.gapM <= typicalRunM ? 'One run closes that gap.' : 'See how the race stands.'}
-            </Text>
+            {typicalRunM > 0 && rival.gapM <= typicalRunM && <Text variant="muted">One run closes it</Text>}
           </Card>
         </Pressable>
       )}
@@ -188,13 +184,12 @@ export default function Home() {
         <Text variant="heading">
           {finishers} of {standings?.length ?? 0} finished
         </Text>
-        <Text variant="muted">{formatMiles(combinedM, 0)} miles run and walked as a crew so far.</Text>
+        <Text variant="muted">{formatMiles(combinedM, 0)} miles together</Text>
       </Card>
 
       {race && (
         <Card>
-          <Text variant="label">Invite friends</Text>
-          <Text variant="muted">Share this code so they can join {race.name}:</Text>
+          <Text variant="label">Invite code</Text>
           <Text variant="display" size={32} selectable>
             {race.invite_code}
           </Text>
@@ -245,7 +240,6 @@ function RecordingStatus() {
         <Text variant="heading">
           {waiting} recorded {waiting === 1 ? 'run' : 'runs'} waiting to upload
         </Text>
-        <Text variant="muted">Saved on your phone. They’ll upload when you’re online.</Text>
         <Button title="Upload now" variant="secondary" onPress={uploadAll} loading={uploading} />
       </Card>
     );
@@ -287,9 +281,8 @@ function WatchRuns({ onImported }: { onImported: () => void }) {
   return (
     <Card>
       <Text variant="heading">
-        Added {added.count} {added.count === 1 ? 'workout' : 'workouts'} from your watch
+        Synced {added.count} {added.count === 1 ? 'workout' : 'workouts'} · {added.miles} mi
       </Text>
-      <Text variant="muted">{added.miles} miles, picked up from Health Connect.</Text>
     </Card>
   );
 }
@@ -318,13 +311,10 @@ function NoRaceYet() {
           Your 1,000 miles start here
         </Text>
         <Quote quote={milestoneQuote(1)} align="center" />
-        <Text variant="muted" style={{ textAlign: 'center' }}>
-          Join a friend’s race with an invite code, or start one and bring your people.
-        </Text>
       </View>
       <View style={{ gap: Space.sm, marginTop: Space.lg }}>
         <Button title="Join a race" onPress={() => router.push('/join')} />
-        <Button title="Start a new race" variant="secondary" onPress={() => router.push('/create-race')} />
+        <Button title="Start a race" variant="secondary" onPress={() => router.push('/create-race')} />
       </View>
     </Screen>
   );

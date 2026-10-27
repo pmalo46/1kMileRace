@@ -30,7 +30,7 @@ export default function SignIn() {
       ? await supabase.auth.signUp({ ...credentials, options: { data: { display_name: name.trim() } } })
       : await supabase.auth.signInWithPassword(credentials);
     setBusy(false);
-    if (error) return Alert.alert(signingUp ? 'Could not create your account' : 'Could not sign you in', error.message);
+    if (error) return Alert.alert(signingUp ? 'Couldn’t create account' : 'Couldn’t sign in', error.message);
     // Only happens if "Confirm email" gets switched back on in Supabase.
     if (!data.session) Alert.alert('Almost there', 'Check your email to confirm your account, then sign in.');
   };
@@ -80,7 +80,7 @@ export default function SignIn() {
             disabled={!ready}
           />
           <Button
-            title={signingUp ? 'I already have an account' : 'New here? Create an account'}
+            title={signingUp ? 'I have an account' : 'Create an account'}
             variant="secondary"
             onPress={() => setMode(signingUp ? 'sign-in' : 'sign-up')}
           />

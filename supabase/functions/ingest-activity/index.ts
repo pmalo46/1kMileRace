@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     const file = evidencePath.slice(slash + 1);
     const { data: found } = await admin.storage.from("evidence").list(folder, { search: file });
     if (folder !== user.id || !found?.some((o) => o.name === file)) {
-      return json(400, { error: "We couldn't find that photo. Try attaching it again." });
+      return json(400, { error: "Photo not found. Try attaching it again." });
     }
   }
   activity.evidenceCount = evidencePath ? 1 : 0;
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
           [passed.user_id],
           overtakePush(
             runner,
-            { type: activity.type, distanceM: c.counted_distance_m },
+            activity.type,
             me.counted_distance_m - passed.counted_distance_m,
             race,
             item?.id ?? null,
