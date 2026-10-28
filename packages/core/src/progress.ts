@@ -32,8 +32,6 @@ export function paceStatus(totalM: number, race: RaceWindow, now: Date = new Dat
 export interface FinishPlan {
   /** How far each run needs to go, from now on, to finish by the race's end. */
   perRunM: number;
-  /** The same after a week with no runs, or null once less than a week is left. */
-  afterSkippedWeekM: number | null;
   /** When the runner finishes at their average daily distance so far. Null before any miles. */
   projectedFinish: Date | null;
   /** Projected to finish by the race's end. */
@@ -56,14 +54,12 @@ export function finishPlan(
 
   const weeksLeft = daysRemaining / 7;
   const perRunM = left / Math.max(1, weeksLeft * runsPerWeek);
-  const afterSkippedWeekM = weeksLeft > 1 ? left / Math.max(1, (weeksLeft - 1) * runsPerWeek) : null;
 
   const daysIn = (now.getTime() - race.startsAt.getTime()) / 1000 / SECONDS_PER_DAY;
   const perDayM = daysIn > 0 && totalM > 0 ? totalM / daysIn : 0;
   const projectedFinish = perDayM > 0 ? new Date(now.getTime() + (left / perDayM) * SECONDS_PER_DAY * 1000) : null;
   return {
     perRunM,
-    afterSkippedWeekM,
     projectedFinish,
     onTrack: projectedFinish != null && projectedFinish.getTime() <= race.endsAt.getTime(),
   };

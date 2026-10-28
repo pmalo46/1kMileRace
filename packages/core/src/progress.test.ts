@@ -63,7 +63,6 @@ describe("finishPlan", () => {
     const plan = finishPlan(milesToMeters(500), race, 4, mid)!;
     const weeksLeft = 182.5 / 7;
     expect(metersToMiles(plan.perRunM)).toBeCloseTo(500 / (weeksLeft * 4), 5);
-    expect(metersToMiles(plan.afterSkippedWeekM!)).toBeCloseTo(500 / ((weeksLeft - 1) * 4), 5);
   });
 
   it("asks more of each run the fewer runs a week there are", () => {
@@ -93,7 +92,6 @@ describe("finishPlan", () => {
     const lastDay = new Date(race.endsAt.getTime() - 86_400_000);
     const plan = finishPlan(milesToMeters(990), race, 4, lastDay)!;
     expect(metersToMiles(plan.perRunM)).toBeCloseTo(10, 5);
-    expect(plan.afterSkippedWeekM).toBeNull();
   });
 });
 

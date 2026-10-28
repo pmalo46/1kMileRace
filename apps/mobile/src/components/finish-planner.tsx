@@ -21,7 +21,7 @@ function day(d: Date, now: Date = new Date()): string {
 
 /**
  * What it takes to finish on time: pick how many days a week you'll run, and see how far
- * each run has to go. Fewer days, or a skipped week, and the number climbs.
+ * each run has to go, and how much one more run a week would take off it.
  */
 export function FinishPlanner({ totalM, race, runs }: { totalM: number; race: RaceWindow; runs: number }) {
   const { colors } = useTheme();
@@ -29,6 +29,7 @@ export function FinishPlanner({ totalM, race, runs }: { totalM: number; race: Ra
   const [perWeek, setPerWeek] = useState(() => runsPerWeekSoFar(runs, race.startsAt));
   const plan = finishPlan(totalM, race, perWeek);
   if (!plan) return null;
+  const oneMore = perWeek < 7 ? finishPlan(totalM, race, perWeek + 1) : null;
 
   return (
     <View style={{ gap: Space.sm }}>
@@ -72,8 +73,8 @@ export function FinishPlanner({ totalM, race, runs }: { totalM: number; race: Ra
       <Text variant="heading">
         {formatMiles(plan.perRunM)} mi per run to finish on time
       </Text>
-      {plan.afterSkippedWeekM != null && (
-        <Text variant="muted">Skip a week and it’s {formatMiles(plan.afterSkippedWeekM)} mi per run</Text>
+      {oneMore && (
+        <Text variant="muted">One more run a week brings it down to {formatMiles(oneMore.perRunM)} mi</Text>
       )}
     </View>
   );
