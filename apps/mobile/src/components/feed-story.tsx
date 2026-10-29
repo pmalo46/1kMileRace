@@ -33,8 +33,11 @@ function story(item: FeedItem): { headline: string; detail?: string } {
   return { headline: 'logged some miles' };
 }
 
-/** Who did what and when: the top of a feed card, and the header of its comments. */
-export function FeedStory({ item, isMe }: { item: FeedItem; isMe: boolean }) {
+/**
+ * Who did what and when: the top of a feed card, and the header of its comments.
+ * `time` replaces the "3h ago" style time, e.g. when the feed already shows the day.
+ */
+export function FeedStory({ item, isMe, time }: { item: FeedItem; isMe: boolean; time?: string }) {
   const { colors } = useTheme();
   const name = item.actor?.display_name ?? 'Runner';
   const { headline, detail } = story(item);
@@ -58,7 +61,7 @@ export function FeedStory({ item, isMe }: { item: FeedItem; isMe: boolean }) {
           <Text style={{ fontWeight: '800' }}>{isMe ? 'You' : name}</Text> {headline}
         </Text>
         <Text variant="muted" size={13}>
-          {[detail, timeAgo(item.created_at)].filter(Boolean).join(' · ')}
+          {[detail, time ?? timeAgo(item.created_at)].filter(Boolean).join(' · ')}
         </Text>
       </View>
     </View>
