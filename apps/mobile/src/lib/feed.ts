@@ -167,3 +167,31 @@ export function timeAgo(iso: string, now = Date.now()): string {
   if (s < 7 * 86_400) return `${Math.floor(s / 86_400)}d`;
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+/** "Today", "Yesterday", "Monday" within the week, then "Oct 13". */
+export function dayLabel(iso: string, now = new Date()): string {
+  const d = new Date(iso);
+  const days = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return d.toLocaleDateString(undefined, { weekday: 'long' });
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+  });
+}
+
+/** Feed items grouped by the day they happened, newest first. */
+export function byDay(items: FeedItem[], now = new Date()): { title: string; data: FeedItem[] }[] {
+  const sections: { title: string; data: FeedItem[] }[] = [];
+  for (const item of items) {
+    const title = dayLabel(item.created_at, now);
+    const last = sections[sections.length - 1];
+    if (last?.title === title) last.data.push(item);
+    else sections.push({ title, data: [item] });
+  }
+  return sections;
+}

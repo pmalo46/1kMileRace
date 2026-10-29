@@ -43,7 +43,7 @@ export default function Home() {
   const { week, refresh: refreshWeek } = useMyWeek(session?.user.id);
   const [refreshing, setRefreshing] = useState(false);
   // Home only peeks: the leaderboard is where the race has been seen.
-  const { recap } = useSinceLastLook(race?.id, session?.user.id, standings, race?.goal_m ?? 1, { record: false });
+  const { before, recap } = useSinceLastLook(race?.id, session?.user.id, standings, race?.goal_m ?? 1, { record: false });
 
   const me = standings?.find((s) => s.user_id === session?.user.id);
   const board = useMemo(() => (standings ? distanceBoard(standings) : []), [standings]);
@@ -107,7 +107,7 @@ export default function Home() {
 
       <RecordingStatus />
       <WatchRuns onImported={refreshStandings} />
-      {recap && <SinceLastLookTeaser recap={recap} me={me} />}
+      {recap && before && <SinceLastLookTeaser recap={recap} me={me} since={before.at} />}
 
       {pace && (
         <Card style={!pace.finished && week && !week.ranToday ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>

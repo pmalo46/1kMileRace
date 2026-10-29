@@ -193,7 +193,7 @@ export default function Leaderboard() {
         ListHeaderComponent={
           <View style={{ gap: Space.sm }}>
             {recap && before && userId && (
-              <SinceLastLook recap={recap} me={standings?.find((s) => s.user_id === userId)} />
+              <SinceLastLook recap={recap} me={standings?.find((s) => s.user_id === userId)} since={before.at} />
             )}
             {callout && (
               <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>

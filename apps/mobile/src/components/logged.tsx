@@ -104,7 +104,11 @@ export function Logged({ result, miles }: { result: LogResult; miles: string }) 
           <Text variant="heading">
             {formatMiles(next.toGoM)} miles to {next.miles.toLocaleString()}
           </Text>
-          <Text variant="muted">{runsToNext === 1 ? 'One more run like this' : `${runsToNext} more runs like this`}</Text>
+          <Text variant="muted">
+            {next.toGoM <= milesToMeters(countedMiles)
+              ? 'One more run like this'
+              : `About ${runsToNext === 1 ? 'one more run' : `${runsToNext} more runs`} like this`}
+          </Text>
         </Card>
       )}
 

@@ -1,8 +1,9 @@
 import { milestoneQuote } from '@1k/core';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Pressable, SectionList, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import EmojiPicker from 'rn-emoji-keyboard';
 
@@ -12,7 +13,7 @@ import { Quote } from '@/components/quote';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
-import { CHEER_EMOJIS, useFeed } from '@/lib/feed';
+import { CHEER_EMOJIS, byDay, timeAgo, useFeed } from '@/lib/feed';
 import type { FeedItem } from '@/lib/types';
 import { Radius, Space } from '@/theme/tokens';
 import { useTheme } from '@/theme/use-theme';
@@ -24,6 +25,9 @@ export default function Feed() {
   const { items, refresh, toggleCheer } = useFeed(race?.id);
   const userId = session?.user.id;
   const [pickingFor, setPickingFor] = useState<FeedItem | null>(null);
+  // The one card whose quick cheers are showing.
+  const [trayFor, setTrayFor] = useState<string | null>(null);
+  const sections = useMemo(() => byDay(items ?? []), [items]);
 
   const cheer = (item: FeedItem, emoji: string) => {
     if (!userId) return;
@@ -46,18 +50,36 @@ export default function Feed() {
           Feed
         </Text>
       </View>
-      <FlatList
-        data={items ?? []}
+      <SectionList
+        sections={sections}
         keyExtractor={(i) => i.id}
-        contentContainerStyle={{ paddingHorizontal: Space.md, gap: Space.sm, paddingBottom: Space.xxl * 2 }}
+        stickySectionHeadersEnabled={false}
+        contentContainerStyle={{ paddingHorizontal: Space.md, paddingBottom: Space.xxl * 2 }}
         onRefresh={refresh}
         refreshing={false}
-        renderItem={({ item }) => (
+        renderSectionHeader={({ section }) => (
+          <Text variant="label" style={{ paddingTop: Space.lg, paddingBottom: Space.sm }}>
+            {section.title}
+          </Text>
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: Space.sm }} />}
+        renderItem={({ item, section }) => (
           <FeedCard
             item={item}
             userId={userId}
+            today={section.title === 'Today'}
+            trayOpen={trayFor === item.id}
+            onToggleTray={() => setTrayFor((open) => (open === item.id ? null : item.id))}
             onCheer={(emoji) => cheer(item, emoji)}
-            onPickEmoji={() => setPickingFor(item)}
+            onQuickCheer={(emoji) => {
+              setTrayFor(null);
+              // A quick pick you've already given keeps it, rather than taking it back.
+              if (!item.cheers.some((c) => c.emoji === emoji && c.user_id === userId)) cheer(item, emoji);
+            }}
+            onPickEmoji={() => {
+              setTrayFor(null);
+              setPickingFor(item);
+            }}
           />
         )}
         ListEmptyComponent={
@@ -104,29 +126,46 @@ export default function Feed() {
   );
 }
 
+/** "6:42 AM": the day is already in the section header. */
+const clockTime = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
 function FeedCard({
   item,
   userId,
+  today,
+  trayOpen,
+  onToggleTray,
   onCheer,
+  onQuickCheer,
   onPickEmoji,
 }: {
   item: FeedItem;
   userId: string | undefined;
+  today: boolean;
+  trayOpen: boolean;
+  onToggleTray: () => void;
   onCheer: (emoji: string) => void;
+  onQuickCheer: (emoji: string) => void;
   onPickEmoji: () => void;
 }) {
   const { colors } = useTheme();
   const commentCount = item.comments[0]?.count ?? 0;
-  // The quick picks, then whatever else people have cheered with.
-  const emojis = [...new Set([...CHEER_EMOJIS, ...item.cheers.map((c) => c.emoji)])];
+  // Only the cheers people have given, in the order they first appeared.
+  const given = [...new Set(item.cheers.map((c) => c.emoji))];
+  const pill = { minHeight: 36, paddingHorizontal: 12, borderRadius: Radius.pill, justifyContent: 'center' } as const;
+
   return (
     <Card style={item.type === 'finish' ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>
-      <FeedStory item={item} isMe={item.actor_id === userId} />
+      <FeedStory
+        item={item}
+        isMe={item.actor_id === userId}
+        time={today ? timeAgo(item.created_at) : clockTime(item.created_at)}
+      />
       {(item.type === 'milestone' || item.type === 'finish') && item.payload.miles != null && (
         <Quote quote={milestoneQuote(item.payload.miles)} size={16} />
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm, alignItems: 'center' }}>
-        {emojis.map((emoji) => {
+        {given.map((emoji) => {
           const count = item.cheers.filter((c) => c.emoji === emoji).length;
           const mine = item.cheers.some((c) => c.emoji === emoji && c.user_id === userId);
           return (
@@ -134,43 +173,33 @@ function FeedCard({
               key={emoji}
               onPress={() => onCheer(emoji)}
               accessibilityRole="button"
-              accessibilityLabel={`Cheer ${emoji}${count ? `, ${count}` : ''}`}
+              accessibilityLabel={`${emoji}, ${count}${mine ? ', including yours' : ''}`}
+              accessibilityHint={mine ? 'Takes your cheer back' : 'Adds your cheer'}
               accessibilityState={{ selected: mine }}
               style={({ pressed }) => ({
+                ...pill,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: Space.xs,
-                minHeight: 36,
-                paddingHorizontal: 12,
-                borderRadius: Radius.pill,
                 borderWidth: 1.5,
                 borderColor: mine ? colors.accent : 'transparent',
                 backgroundColor: colors.surfaceAlt,
                 transform: [{ scale: pressed ? 1.15 : 1 }],
               })}>
               <Text size={17}>{emoji}</Text>
-              {count > 0 && (
-                <Text size={14} style={{ fontWeight: '800', color: mine ? colors.accent : colors.textMuted }}>
-                  {count}
-                </Text>
-              )}
+              <Text size={14} style={{ fontWeight: '800', color: mine ? colors.accent : colors.textMuted }}>
+                {count}
+              </Text>
             </Pressable>
           );
         })}
         <Pressable
-          onPress={onPickEmoji}
+          onPress={onToggleTray}
           accessibilityRole="button"
-          accessibilityLabel="Cheer with another emoji"
-          style={{
-            minHeight: 36,
-            minWidth: 36,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: Radius.pill,
-            backgroundColor: colors.surfaceAlt,
-          }}>
-          <Text size={18} style={{ fontWeight: '800', color: colors.textMuted }}>
-            +
+          accessibilityState={{ expanded: trayOpen }}
+          style={{ ...pill, backgroundColor: trayOpen ? colors.accent : colors.surfaceAlt }}>
+          <Text size={14} style={{ fontWeight: '800', color: trayOpen ? colors.onAccent : colors.textMuted }}>
+            Cheer
           </Text>
         </Pressable>
         <Pressable
@@ -182,6 +211,35 @@ function FeedCard({
           </Text>
         </Pressable>
       </View>
+      {trayOpen && (
+        <Animated.View entering={FadeIn.duration(150)} style={{ flexDirection: 'row', gap: Space.sm }}>
+          {CHEER_EMOJIS.map((emoji) => (
+            <Pressable
+              key={emoji}
+              onPress={() => onQuickCheer(emoji)}
+              accessibilityRole="button"
+              accessibilityLabel={`Cheer ${emoji}`}
+              style={({ pressed }) => ({
+                ...pill,
+                flex: 1,
+                alignItems: 'center',
+                backgroundColor: colors.surfaceAlt,
+                transform: [{ scale: pressed ? 1.15 : 1 }],
+              })}>
+              <Text size={20}>{emoji}</Text>
+            </Pressable>
+          ))}
+          <Pressable
+            onPress={onPickEmoji}
+            accessibilityRole="button"
+            accessibilityLabel="Cheer with another emoji"
+            style={{ ...pill, flex: 1, alignItems: 'center', backgroundColor: colors.surfaceAlt }}>
+            <Text size={18} style={{ fontWeight: '800', color: colors.textMuted }}>
+              +
+            </Text>
+          </Pressable>
+        </Animated.View>
+      )}
     </Card>
   );
 }
