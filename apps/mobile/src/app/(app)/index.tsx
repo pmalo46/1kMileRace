@@ -168,14 +168,18 @@ export default function Home() {
         </Pressable>
       )}
 
-      <View style={{ flexDirection: 'row', gap: Space.sm }}>
+      <Pressable
+        onPress={() => router.navigate('/my-race')}
+        accessibilityRole="button"
+        accessibilityHint="Opens My Race"
+        style={{ flexDirection: 'row', gap: Space.sm }}>
         <Stat label="Place" value={myPlace ? `#${myPlace}` : '–'} />
         <Stat label="Runs" value={String(me?.activity_count ?? 0)} />
         <Stat
           label="Avg pace"
           value={me?.counted_distance_m ? formatPace(paceSecondsPerMile(me.counted_distance_m, me.counted_moving_time_s)) : '–'}
         />
-      </View>
+      </Pressable>
 
       <Card>
         <Text variant="label">Together</Text>
