@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { Text } from '@/components/text';
+import { dayLabel } from '@/lib/feed';
 import { names } from '@/lib/last-look';
 import type { Standing } from '@/lib/types';
 import { Space } from '@/theme/tokens';
@@ -48,17 +49,34 @@ function recapLines(recap: Recap<Standing>, me: Standing | undefined): { emoji: 
   return lines;
 }
 
-const headline = (recap: Recap<Standing>) =>
-  recap.crewM >= METERS_PER_MILE / 10 ? `+${formatMiles(recap.crewM)} miles together` : 'New faces';
+/** "today", "since yesterday", "since Monday", "since Oct 13": when the last look was. */
+function sinceWhen(since: string): string {
+  const day = dayLabel(since);
+  return day === 'Today' ? 'today' : `since ${day === 'Yesterday' ? 'yesterday' : day}`;
+}
 
-export function SinceLastLook({ recap, me }: { recap: Recap<Standing>; me: Standing | undefined }) {
+const headline = (recap: Recap<Standing>, since: string) =>
+  recap.crewM >= METERS_PER_MILE / 10
+    ? `+${formatMiles(recap.crewM)} combined new miles ${sinceWhen(since)}`
+    : 'New faces';
+
+export function SinceLastLook({
+  recap,
+  me,
+  since,
+}: {
+  recap: Recap<Standing>;
+  me: Standing | undefined;
+  /** When the last look was. */
+  since: string;
+}) {
   const { colors } = useTheme();
   const lines = recapLines(recap, me);
   const cheerable = recap.finished.length + recap.milestones.length + recap.joined.length > 0;
   return (
     <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>
       <Text variant="label">Latest happenings</Text>
-      <Text variant="heading">{headline(recap)}</Text>
+      <Text variant="heading">{headline(recap, since)}</Text>
       {lines.length > 0 && (
         <View style={{ gap: Space.xs }}>
           {lines.map((l) => (
@@ -79,13 +97,21 @@ export function SinceLastLook({ recap, me }: { recap: Recap<Standing>; me: Stand
 }
 
 /** A peek at the recap from Home, leading to the full one on the leaderboard. */
-export function SinceLastLookTeaser({ recap, me }: { recap: Recap<Standing>; me: Standing | undefined }) {
+export function SinceLastLookTeaser({
+  recap,
+  me,
+  since,
+}: {
+  recap: Recap<Standing>;
+  me: Standing | undefined;
+  since: string;
+}) {
   const first = recapLines(recap, me)[0];
   return (
     <Pressable onPress={() => router.push('/leaderboard')} accessibilityRole="link">
       <Card>
         <Text variant="label">Latest happenings</Text>
-        <Text variant="heading">{headline(recap)}</Text>
+        <Text variant="heading">{headline(recap, since)}</Text>
         {first && <Text variant="muted">{`${first.emoji} ${first.text}`}</Text>}
       </Card>
     </Pressable>

@@ -4,12 +4,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import type { Comment, FeedItem } from './types';
 
-/** Quick picks shown on every card; the picker offers the rest. */
+/** What one tap on a post's cheer button gives. */
+export const CHEER = '👏';
+
+/** Quick picks offered right after a cheer; the picker has the rest. */
 export const CHEER_EMOJIS = ['🔥', '👏', '💪', '🎉'] as const;
 
 const FEED_ITEM =
   'id, type, actor_id, payload, created_at, actor:profiles!feed_items_actor_id_fkey(display_name, avatar_url), ' +
-  'activity:activities(type, environment, distance_m, moving_time_s), cheers(user_id, emoji), comments(count)';
+  'activity:activities(type, environment, distance_m, moving_time_s), cheers(user_id, emoji), comments(count), ' +
+  'latest:comments(user_id, body, gif_url, author:profiles(display_name))';
+
+/** Feed items with their newest comment as `latest`. */
+const feedItems = () =>
+  supabase
+    .from('feed_items')
+    .select(FEED_ITEM)
+    .order('created_at', { referencedTable: 'latest', ascending: false })
+    .limit(1, { referencedTable: 'latest' });
 
 const COMMENT =
   'id, feed_item_id, user_id, body, gif_id, gif_url, gif_width, gif_height, created_at, author:profiles(display_name)';
@@ -19,6 +31,9 @@ function notify(body: { kind: 'cheer'; feedItemId: string; emoji: string } | { k
   supabase.functions.invoke('notify', { body }).catch(() => undefined);
 }
 
+/** The server skips announcing a cheer that's gone by the time it's asked. */
+const CHEER_NOTIFY_DELAY_MS = 5000;
+
 const topic = (name: string) => `${name}:${Math.random().toString(36).slice(2)}`;
 
 /** The newest things that happened in a race, live: runs, milestones, finishes, and people joining. */
@@ -27,9 +42,7 @@ export function useFeed(raceId: string | undefined) {
 
   const refresh = useCallback(async () => {
     if (!raceId) return;
-    const { data } = await supabase
-      .from('feed_items')
-      .select(FEED_ITEM)
+    const { data } = await feedItems()
       .eq('race_id', raceId)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -77,12 +90,31 @@ export function useFeed(raceId: string | undefined) {
         ? await supabase.from('cheers').delete().match({ feed_item_id: item.id, user_id: userId, emoji })
         : await supabase.from('cheers').insert({ feed_item_id: item.id, user_id: userId, emoji });
       if (error) refresh();
-      else if (!mine) notify({ kind: 'cheer', feedItemId: item.id, emoji });
+      // Held a moment, so a cheer switched for another emoji or taken back is never announced.
+      else if (!mine) setTimeout(() => notify({ kind: 'cheer', feedItemId: item.id, emoji }), CHEER_NOTIFY_DELAY_MS);
     },
     [refresh],
   );
 
   return { items, refresh, toggleCheer };
+}
+
+/** Posts a comment, with or without a GIF, and lets the people it concerns know. */
+export async function postComment(feedItemId: string, userId: string, body: string, gif: Gif | null = null) {
+  const { data, error } = await supabase
+    .from('comments')
+    .insert({
+      feed_item_id: feedItemId,
+      user_id: userId,
+      body,
+      ...(gif ? { gif_id: gif.id, gif_url: gif.url, gif_width: gif.width, gif_height: gif.height } : {}),
+    })
+    .select(COMMENT)
+    .single();
+  if (error) throw new Error(error.message);
+  const posted = data as unknown as Comment;
+  notify({ kind: 'comment', commentId: posted.id });
+  return posted;
 }
 
 /** One feed item and its comments, oldest first. */
@@ -105,9 +137,7 @@ export function useComments(feedItemId: string | undefined) {
 
   useEffect(() => {
     if (!feedItemId) return;
-    supabase
-      .from('feed_items')
-      .select(FEED_ITEM)
+    feedItems()
       .eq('id', feedItemId)
       .maybeSingle()
       .then(({ data }) => setItem(data as unknown as FeedItem | null));
@@ -128,19 +158,7 @@ export function useComments(feedItemId: string | undefined) {
   const add = useCallback(
     async (body: string, userId: string, gif: Gif | null = null) => {
       if (!feedItemId) throw new Error('This post is no longer available.');
-      const { data, error } = await supabase
-        .from('comments')
-        .insert({
-          feed_item_id: feedItemId,
-          user_id: userId,
-          body,
-          ...(gif ? { gif_id: gif.id, gif_url: gif.url, gif_width: gif.width, gif_height: gif.height } : {}),
-        })
-        .select(COMMENT)
-        .single();
-      if (error) throw new Error(error.message);
-      const posted = data as unknown as Comment;
-      notify({ kind: 'comment', commentId: posted.id });
+      const posted = await postComment(feedItemId, userId, body, gif);
       setComments((list) => [...(list ?? []).filter((c) => c.id !== posted.id), posted]);
     },
     [feedItemId],
@@ -166,4 +184,32 @@ export function timeAgo(iso: string, now = Date.now()): string {
   if (s < 86_400) return `${Math.floor(s / 3600)}h`;
   if (s < 7 * 86_400) return `${Math.floor(s / 86_400)}d`;
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+/** "Today", "Yesterday", "Monday" within the week, then "Oct 13". */
+export function dayLabel(iso: string, now = new Date()): string {
+  const d = new Date(iso);
+  const days = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return d.toLocaleDateString(undefined, { weekday: 'long' });
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+  });
+}
+
+/** Feed items grouped by the day they happened, newest first. */
+export function byDay(items: FeedItem[], now = new Date()): { title: string; data: FeedItem[] }[] {
+  const sections: { title: string; data: FeedItem[] }[] = [];
+  for (const item of items) {
+    const title = dayLabel(item.created_at, now);
+    const last = sections[sections.length - 1];
+    if (last?.title === title) last.data.push(item);
+    else sections.push({ title, data: [item] });
+  }
+  return sections;
 }

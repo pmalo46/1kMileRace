@@ -1,12 +1,10 @@
-import type { Gif } from '@1k/core';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Pressable, TextInput, View } from 'react-native';
+import { Alert, FlatList, KeyboardAvoidingView, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CommentComposer } from '@/components/comment-composer';
 import { FeedStory } from '@/components/feed-story';
-import { GifPicker } from '@/components/gif-picker';
 import { Text } from '@/components/text';
 import { useAuth } from '@/lib/auth';
 import { timeAgo, useComments } from '@/lib/feed';
@@ -23,26 +21,7 @@ export default function Comments() {
   const { session } = useAuth();
   const { item: itemId } = useLocalSearchParams<{ item: string }>();
   const { item, comments, error, add, remove } = useComments(itemId);
-  const [draft, setDraft] = useState('');
-  const [gif, setGif] = useState<Gif | null>(null);
-  const [picking, setPicking] = useState(false);
-  const [sending, setSending] = useState(false);
   const userId = session?.user.id;
-  const body = draft.trim();
-  const canPost = (!!body || !!gif) && !sending;
-
-  const send = async () => {
-    if (!userId || (!body && !gif)) return;
-    setSending(true);
-    try {
-      await add(body, userId, gif);
-      setDraft('');
-      setGif(null);
-    } catch (e) {
-      Alert.alert('Couldn’t post', e instanceof Error ? e.message : 'Try again.');
-    }
-    setSending(false);
-  };
 
   const confirmRemove = (comment: Comment) =>
     Alert.alert('Delete your comment?', undefined, [
@@ -106,81 +85,13 @@ export default function Comments() {
             </Text>
           }
         />
-        {gif && (
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Space.sm, paddingHorizontal: Space.md }}>
-            <Image
-              source={{ uri: gif.url }}
-              accessibilityLabel={gif.title || 'GIF'}
-              style={{ width: 96, aspectRatio: gif.width / gif.height, borderRadius: Radius.sm }}
-            />
-            <Pressable onPress={() => setGif(null)} accessibilityRole="button" hitSlop={12}>
-              <Text variant="muted" style={{ fontWeight: '800' }}>
-                Remove
-              </Text>
-            </Pressable>
-          </View>
-        )}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            gap: Space.sm,
-            padding: Space.md,
-            borderTopWidth: gif ? 0 : 1,
-            borderTopColor: colors.border,
-          }}>
-          <Pressable
-            onPress={() => setPicking(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Add a GIF"
-            style={{
-              minHeight: 48,
-              justifyContent: 'center',
-              paddingHorizontal: Space.sm,
-              borderRadius: Radius.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}>
-            <Text style={{ fontWeight: '800', fontSize: 15 }}>GIF</Text>
-          </Pressable>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Add a comment"
-            placeholderTextColor={colors.textMuted}
-            multiline
-            maxLength={1000}
-            style={{
-              flex: 1,
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderWidth: 1,
-              borderRadius: Radius.md,
-              paddingHorizontal: Space.md,
-              paddingVertical: 12,
-              minHeight: 48,
-              maxHeight: 120,
-              fontSize: 17,
-              color: colors.text,
-            }}
-          />
-          <Pressable
-            onPress={send}
-            disabled={!canPost}
-            accessibilityRole="button"
-            style={{ minHeight: 48, justifyContent: 'center', paddingHorizontal: Space.sm, opacity: canPost ? 1 : 0.4 }}>
-            <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 17 }}>Post</Text>
-          </Pressable>
-        </View>
+        <CommentComposer
+          onPost={async (body, gif) => {
+            if (!userId) throw new Error('Sign in to comment.');
+            await add(body, userId, gif);
+          }}
+        />
       </SafeAreaView>
-      <GifPicker
-        visible={picking}
-        onClose={() => setPicking(false)}
-        onPick={(picked) => {
-          setGif(picked);
-          setPicking(false);
-        }}
-      />
     </KeyboardAvoidingView>
   );
 }

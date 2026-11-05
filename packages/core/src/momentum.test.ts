@@ -42,8 +42,10 @@ describe("milestones ahead", () => {
     expect(nextMilestone(milesToMeters(100), GOAL)!.miles).toBe(200);
   });
 
-  it("counts the runs of a given length still needed", () => {
+  it("counts about how many runs of a given length are still needed", () => {
     expect(runsToCover(milesToMeters(89.7), milesToMeters(3.1))).toBe(29);
+    expect(runsToCover(milesToMeters(20.3), milesToMeters(10.1))).toBe(2);
+    expect(runsToCover(milesToMeters(25), milesToMeters(10))).toBe(3);
     expect(runsToCover(milesToMeters(0.2), milesToMeters(3.1))).toBe(1);
     expect(runsToCover(milesToMeters(5), 0)).toBeNull();
   });

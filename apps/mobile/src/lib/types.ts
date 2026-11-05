@@ -37,6 +37,8 @@ export interface FeedItem {
   activity: { type: 'run' | 'walk'; environment: 'outdoor' | 'treadmill'; distance_m: number; moving_time_s: number } | null;
   cheers: { user_id: string; emoji: string }[];
   comments: { count: number }[];
+  /** The newest comment, if any. */
+  latest: { user_id: string; body: string; gif_url: string | null; author: { display_name: string } | null }[];
 }
 
 export interface Comment {

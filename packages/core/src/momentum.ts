@@ -45,9 +45,12 @@ export function nextMilestone(countedM: number, goalM: number): NextMilestone | 
   return next == null ? null : { miles: next, toGoM: next * METERS_PER_MILE - countedM };
 }
 
-/** How many runs of this length reach a distance still to go (at least one). */
+/**
+ * About how many runs of this length cover a distance still to go (at least one). Rounds to
+ * the nearest run, so 20.3 miles to go is about 2 runs of 10.1, not 3.
+ */
 export const runsToCover = (toGoM: number, runM: number): number | null =>
-  runM > 0 ? Math.max(1, Math.ceil(toGoM / runM)) : null;
+  runM > 0 ? Math.max(1, Math.round(toGoM / runM)) : null;
 
 export interface Rival<S> {
   standing: S;
