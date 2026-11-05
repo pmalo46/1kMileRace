@@ -137,6 +137,9 @@ Deno.serve(async (req) => {
     p_evidence_path: evidencePath ?? null,
     p_evidence_taken_at: activity.evidenceTakenAt?.toISOString() ?? null,
   });
+  // The same workout sent twice at once gets past the duplicate check above; the second insert
+  // then trips the unique key (23505) and is the same duplicate.
+  if (error?.code === "23505") return json(409, { error: "You already have an activity logged at that time." });
   if (error) return json(500, { error: error.message });
 
   // Tell the runner, and the rest of each race, about any milestone or finish this run brought.
