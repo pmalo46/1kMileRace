@@ -35,6 +35,7 @@ function RootNavigator() {
         </Stack.Protected>
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="(app)" />
+          <Stack.Screen name="runner/[id]" />
           <Stack.Screen name="create-race" options={{ presentation: 'modal' }} />
           <Stack.Screen name="join" options={{ presentation: 'modal' }} />
           <Stack.Screen name="log-run" options={{ presentation: 'modal' }} />

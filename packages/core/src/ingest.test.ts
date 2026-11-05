@@ -23,6 +23,17 @@ const plan = (a: ActivityInput, existing: Parameters<typeof planIngest>[1] = [])
   planIngest(a, existing, DEFAULT_RACE_RULES, now);
 
 describe("planIngest", () => {
+  it("stores a recording's mile splits and run vs walk", () => {
+    const paceDetail = {
+      miles: [{ mile: 1, movingTimeS: 560 }],
+      run: { distanceM: 1500, movingTimeS: 500 },
+      walk: { distanceM: 200, movingTimeS: 150 },
+    };
+    const p = plan(input({ paceDetail }));
+    expect(p.kind === "insert" && p.row.splits).toEqual(paceDetail);
+    expect(() => input({ paceDetail: { ...paceDetail, extra: 1 } as never })).toThrow();
+  });
+
   it("inserts a run under the minimum when it finishes the runner's race", () => {
     const short = input({ distanceM: milesToMeters(0.5), movingTimeS: 5 * 60, elapsedTimeS: 5 * 60 });
     expect(plan(short).kind).toBe("rejected");
@@ -43,6 +54,7 @@ describe("planIngest", () => {
       verification: "pending",
       source_external_id: null,
       polyline: null,
+      splits: null,
     });
     expect(p.row.flags.map((f) => f.code)).toEqual(["manual_entry"]);
     expect(p.replaces).toEqual([]);

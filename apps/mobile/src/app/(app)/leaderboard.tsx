@@ -9,9 +9,9 @@ import {
   timeBoard,
 } from '@1k/core';
 import * as Haptics from 'expo-haptics';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -227,52 +227,58 @@ function LeaderRow({ row, isMe, movedSince }: { row: Row; isMe: boolean; movedSi
   const { colors } = useTheme();
   const medal = row.place != null && row.place <= 3 ? Medal[row.place as 1 | 2 | 3] : null;
   return (
-    <Card style={isMe ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md }}>
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: medal ?? colors.surfaceAlt,
-          }}>
-          <Text variant="display" size={18} style={{ color: medal ? '#1C1433' : colors.text }}>
-            {row.place ?? '·'}
-          </Text>
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
-            <Text style={{ fontWeight: '800', flexShrink: 1 }} numberOfLines={1}>
-              {nameOf(row.standing)}
-              {isMe ? ' (you)' : ''}
+    <Pressable
+      onPress={() => (isMe ? router.navigate('/my-race') : router.push(`/runner/${row.standing.user_id}`))}
+      accessibilityRole="button"
+      accessibilityHint={isMe ? 'Opens My Race' : `Opens ${nameOf(row.standing)}’s stats`}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+      <Card style={isMe ? { borderColor: colors.accent, borderWidth: 2 } : undefined}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.md }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: medal ?? colors.surfaceAlt,
+            }}>
+            <Text variant="display" size={18} style={{ color: medal ? '#1C1433' : colors.text }}>
+              {row.place ?? '·'}
             </Text>
-            {row.moved !== 0 && (
-              <Text
-                size={13}
-                accessibilityLabel={`${row.moved > 0 ? 'Up' : 'Down'} ${Math.abs(row.moved)} since ${movedSince}`}
-                style={{ fontWeight: '800', color: row.moved > 0 ? colors.onPace : colors.textMuted }}>
-                {row.moved > 0 ? '▲' : '▼'} {Math.abs(row.moved)}
-              </Text>
-            )}
-            {row.ranToday && (
-              <View
-                accessibilityLabel="Ran today"
-                style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.onPace }}
-              />
-            )}
           </View>
-          <Text variant="muted" size={13}>
-            {row.secondary}
+          <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+              <Text style={{ fontWeight: '800', flexShrink: 1 }} numberOfLines={1}>
+                {nameOf(row.standing)}
+                {isMe ? ' (you)' : ''}
+              </Text>
+              {row.moved !== 0 && (
+                <Text
+                  size={13}
+                  accessibilityLabel={`${row.moved > 0 ? 'Up' : 'Down'} ${Math.abs(row.moved)} since ${movedSince}`}
+                  style={{ fontWeight: '800', color: row.moved > 0 ? colors.onPace : colors.textMuted }}>
+                  {row.moved > 0 ? '▲' : '▼'} {Math.abs(row.moved)}
+                </Text>
+              )}
+              {row.ranToday && (
+                <View
+                  accessibilityLabel="Ran today"
+                  style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.onPace }}
+                />
+              )}
+            </View>
+            <Text variant="muted" size={13}>
+              {row.secondary}
+            </Text>
+          </View>
+          <Text variant="display" size={20}>
+            {row.primary}
           </Text>
         </View>
-        <Text variant="display" size={20}>
-          {row.primary}
-        </Text>
-      </View>
-      {/* Your bar in color, everyone else's in gray: the eye goes to where you stand. */}
-      <ProgressBar progress={row.progress} height={6} muted={!isMe} />
-    </Card>
+        {/* Your bar in color, everyone else's in gray: the eye goes to where you stand. */}
+        <ProgressBar progress={row.progress} height={6} muted={!isMe} />
+      </Card>
+    </Pressable>
   );
 }

@@ -1,12 +1,15 @@
 import {
   MILESTONE_MILES,
   formatMiles,
+  formatPace,
+  mileSplits,
   metersToMiles,
   milesToMeters,
   nextMilestone,
   passedBy,
   runQuote,
   runsToCover,
+  type TrackSummary,
 } from '@1k/core';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -21,6 +24,7 @@ import { useTheme } from '@/theme/use-theme';
 
 import { Button } from './button';
 import { Card } from './card';
+import { SplitBar } from './charts/split-bar';
 import { MileWall } from './mile-wall';
 import { Quote } from './quote';
 import { Screen } from './screen';
@@ -30,7 +34,7 @@ import { Text } from './text';
  * The "you just added miles" screen shown after a run saves: the run's miles light up on
  * the wall, then what they changed, in the runner's own race.
  */
-export function Logged({ result, miles }: { result: LogResult; miles: string }) {
+export function Logged({ result, miles, track }: { result: LogResult; miles: string; track?: TrackSummary }) {
   const { session } = useAuth();
   const { colors } = useTheme();
   const { race } = useActiveRace();
@@ -112,6 +116,8 @@ export function Logged({ result, miles }: { result: LogResult; miles: string }) 
         </Card>
       )}
 
+      {track && <Splits track={track} />}
+
       <Quote quote={quote} align="center" style={{ marginVertical: Space.sm }} />
 
       <Text variant="muted" style={{ textAlign: 'center' }}>
@@ -131,5 +137,60 @@ function Key({ color, label }: { color: string; label: string }) {
         {label}
       </Text>
     </View>
+  );
+}
+
+/** Each mile's time from a GPS recording, the fastest picked out, and how much was running. */
+function Splits({ track }: { track: TrackSummary }) {
+  const { colors } = useTheme();
+  const splits = mileSplits(track.splits, track.distanceM, track.movingTimeS);
+  const walkedM = track.gait.walk.distanceM;
+  const movedM = track.gait.run.distanceM + walkedM;
+  if (splits.length === 0 && movedM === 0) return null;
+  // Only whole miles compete for fastest; a short last bit is easy to run quickly.
+  const whole = splits.filter((s) => s.miles === 1);
+  const fastest = whole.length > 1 ? Math.min(...whole.map((s) => s.paceS)) : null;
+  const slowest = Math.max(...splits.map((s) => s.paceS));
+  return (
+    <Card>
+      <Text variant="label">Splits</Text>
+      {splits.map((s) => {
+        const best = s.paceS === fastest;
+        return (
+          <View key={s.mile} style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+            <Text variant="muted" size={14} style={{ width: 84 }}>
+              {s.miles === 1 ? `Mile ${s.mile}` : `Last ${s.miles.toFixed(1)} mi`}
+            </Text>
+            {/* Faster miles get longer bars. */}
+            <View style={{ flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.track, overflow: 'hidden' }}>
+              <View
+                style={{
+                  width: `${Math.max(15, (Math.min(...splits.map((x) => x.paceS)) / s.paceS) * 100)}%`,
+                  height: '100%',
+                  borderRadius: 5,
+                  backgroundColor: best ? colors.accent : colors.textMuted,
+                  opacity: best ? 1 : 0.5,
+                }}
+              />
+            </View>
+            <Text style={{ width: 72, textAlign: 'right', fontWeight: best ? '800' : '600' }}>
+              {formatPace(s.paceS)}
+              {best ? ' ⚡' : ''}
+            </Text>
+          </View>
+        );
+      })}
+      {splits.length > 0 && (
+        <Text variant="muted" size={13}>
+          Pace for each mile{fastest != null && fastest < slowest ? '. ⚡ marks your fastest.' : '.'}
+        </Text>
+      )}
+      {movedM > 0 && walkedM > 0 && (
+        <View style={{ gap: Space.xs, marginTop: Space.xs }}>
+          <SplitBar left="running" right="walking" share={track.gait.run.distanceM / movedM} />
+        </View>
+      )}
+      {movedM > 0 && walkedM === 0 && <Text variant="muted">Ran the whole way.</Text>}
+    </Card>
   );
 }

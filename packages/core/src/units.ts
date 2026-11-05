@@ -1,6 +1,12 @@
 export const METERS_PER_MILE = 1609.344;
 export const SECONDS_PER_DAY = 86_400;
 
+/**
+ * Slower than 15:00 a mile (4 mph) counts as a walk, whatever it was logged as. Few people walk
+ * faster than that, and few run slower.
+ */
+export const WALK_PACE_S_PER_MI = 15 * 60;
+
 export const metersToMiles = (m: number): number => m / METERS_PER_MILE;
 export const milesToMeters = (mi: number): number => mi * METERS_PER_MILE;
 

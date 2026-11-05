@@ -1,4 +1,4 @@
-import { METERS_PER_MILE } from "./units.ts";
+import { METERS_PER_MILE, WALK_PACE_S_PER_MI } from "./units.ts";
 
 /** One GPS fix from the phone. `segment` increases each time a paused recording resumes. */
 export interface TrackPoint {
@@ -20,9 +20,26 @@ export interface TrackSummary {
   polyline: string;
   /** Cumulative moving time at each whole mile. */
   splits: { mile: number; movingTimeS: number }[];
+  /** How much of it was running and how much walking, judged a short stretch at a time. */
+  gait: GaitSplit;
   /** Fixes dropped as implausible jumps. */
   spikes: number;
 }
+
+export interface GaitPart {
+  distanceM: number;
+  movingTimeS: number;
+}
+export interface GaitSplit {
+  run: GaitPart;
+  walk: GaitPart;
+}
+
+/**
+ * Run vs walk is judged over stretches about this long: long enough to smooth out GPS wobble,
+ * short enough to catch a one-minute walk break.
+ */
+export const GAIT_WINDOW_MS = 30_000;
 
 /** Fixes less precise than this are ignored. */
 export const MAX_ACCURACY_M = 35;
@@ -60,11 +77,27 @@ export function summarizeTrack(points: TrackPoint[]): TrackSummary {
   let climbM = 0;
   let altBase: number | null = null;
   let prev: TrackPoint | null = null;
+  const gaitMs = { run: 0, walk: 0 };
+  const gaitM = { run: 0, walk: 0 };
+  let windowM = 0;
+  let windowMs = 0;
+  // A stretch is a walk if its pace is slower than the cutoff, using moving time only.
+  const closeWindow = () => {
+    if (windowM > 0 || windowMs > 0) {
+      const walking = windowM <= 0 || windowMs <= 0 || windowMs / 1000 / (windowM / METERS_PER_MILE) > WALK_PACE_S_PER_MI;
+      const g = walking ? "walk" : "run";
+      gaitM[g] += windowM;
+      gaitMs[g] += windowMs;
+    }
+    windowM = 0;
+    windowMs = 0;
+  };
 
   const sorted = [...points].sort((a, b) => a.t - b.t);
   for (const p of sorted) {
     if (p.acc != null && p.acc > MAX_ACCURACY_M) continue;
     if (!prev || p.segment !== prev.segment) {
+      closeWindow();
       prev = p;
       kept.push(p);
       altBase = p.alt ?? altBase;
@@ -81,7 +114,11 @@ export function summarizeTrack(points: TrackPoint[]): TrackSummary {
 
     const before = distanceM;
     distanceM += d;
-    if (d / (dtMs / 1000) >= MIN_MOVING_SPEED_MPS) movingMs += dtMs;
+    const moving = d / (dtMs / 1000) >= MIN_MOVING_SPEED_MPS;
+    if (moving) movingMs += dtMs;
+    windowM += d;
+    if (moving) windowMs += dtMs;
+    if (windowMs >= GAIT_WINDOW_MS) closeWindow();
     for (let mile = Math.floor(before / METERS_PER_MILE) + 1; mile * METERS_PER_MILE <= distanceM; mile++) {
       splits.push({ mile, movingTimeS: Math.round(movingMs / 1000) });
     }
@@ -99,14 +136,51 @@ export function summarizeTrack(points: TrackPoint[]): TrackSummary {
     kept.push(p);
   }
 
+  closeWindow();
+
   return {
     distanceM,
     movingTimeS: Math.round(movingMs / 1000),
     elevationGainM: Math.round(climbM),
     polyline: encodePolyline(kept),
     splits,
+    gait: {
+      run: { distanceM: gaitM.run, movingTimeS: Math.round(gaitMs.run / 1000) },
+      walk: { distanceM: gaitM.walk, movingTimeS: Math.round(gaitMs.walk / 1000) },
+    },
     spikes,
   };
+}
+
+export interface MileSplit {
+  /** 1, 2, 3… and for the last, partial mile its length, e.g. 3.4. */
+  mile: number;
+  /** Length of this split in miles: 1, or less for the last. */
+  miles: number;
+  movingTimeS: number;
+  /** Seconds per mile. */
+  paceS: number;
+}
+
+/** Each mile's own time from the cumulative splits, plus the last part-mile if it's at least 0.1 mi. */
+export function mileSplits(
+  splits: { mile: number; movingTimeS: number }[],
+  distanceM: number,
+  movingTimeS: number,
+): MileSplit[] {
+  const out: MileSplit[] = [];
+  let before = 0;
+  for (const s of splits) {
+    const t = s.movingTimeS - before;
+    out.push({ mile: s.mile, miles: 1, movingTimeS: t, paceS: t });
+    before = s.movingTimeS;
+  }
+  const rest = distanceM / METERS_PER_MILE - splits.length;
+  const restS = movingTimeS - before;
+  if (rest >= 0.1 && restS > 0) {
+    out.push({ mile: Math.floor((splits.length + rest) * 10) / 10, miles: rest, movingTimeS: restS, paceS: restS / rest });
+  }
+  return out;
 }
 
 /** Google's encoded polyline format, 5 decimal places. */

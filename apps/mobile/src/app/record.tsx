@@ -11,6 +11,7 @@ import {
   runQuote,
   summarizeTrack,
   type TrackPoint,
+  type TrackSummary,
 } from '@1k/core';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -66,7 +67,7 @@ export default function Record() {
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
   const [queued, setQueued] = useState<string | null>(null);
-  const [saved, setSaved] = useState<{ result: LogResult; miles: string }>();
+  const [saved, setSaved] = useState<{ result: LogResult; miles: string; track: TrackSummary }>();
 
   // Picking up a run that was going when the app closed.
   useEffect(() => {
@@ -148,11 +149,13 @@ export default function Record() {
   const upload = async (id: string) => {
     if (!session) return;
     setBusy(true);
+    // Read before uploading: once the server has it, the phone drops the raw points.
+    const track = summarize(id);
     try {
       const res = await uploadRecording(session.user.id, id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (res === 'already-saved') router.back();
-      else setSaved({ result: res, miles: formatMiles(summary.distanceM, 2) });
+      else setSaved({ result: res, miles: formatMiles(track.distanceM, 2), track });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       if (e instanceof LogError && e.status === 422) {
@@ -191,7 +194,7 @@ export default function Record() {
     ]);
   };
 
-  if (saved) return <Logged result={saved.result} miles={saved.miles} />;
+  if (saved) return <Logged result={saved.result} miles={saved.miles} track={saved.track} />;
   if (queued && rec) return <Queued message={queued} busy={busy} onRetry={() => upload(rec.id)} />;
   if (!rec) return <Ready type={type} onType={setType} onStart={start} busy={busy} />;
   if (rec.crossed_at != null && !rec.celebrated) {

@@ -282,6 +282,7 @@ function draftFor(rec: Recording, summary: TrackSummary): ActivityDraft {
     elapsedTimeS,
     elevationGainM: summary.elevationGainM,
     polyline: summary.polyline,
+    paceDetail: { miles: summary.splits, run: summary.gait.run, walk: summary.gait.walk },
     mockedLocation: rec.mocked === 1,
     evidenceCount: 0,
   };
