@@ -95,25 +95,3 @@ export function SinceLastLook({
     </Card>
   );
 }
-
-/** A peek at the recap from Home, leading to the full one on the leaderboard. */
-export function SinceLastLookTeaser({
-  recap,
-  me,
-  since,
-}: {
-  recap: Recap<Standing>;
-  me: Standing | undefined;
-  since: string;
-}) {
-  const first = recapLines(recap, me)[0];
-  return (
-    <Pressable onPress={() => router.push('/leaderboard')} accessibilityRole="link">
-      <Card>
-        <Text variant="label">Latest happenings</Text>
-        <Text variant="heading">{recapHeadline(recap, since)}</Text>
-        {first && <Text variant="muted">{`${first.emoji} ${first.text}`}</Text>}
-      </Card>
-    </Pressable>
-  );
-}
