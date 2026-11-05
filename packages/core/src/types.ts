@@ -22,6 +22,23 @@ export type Environment = z.infer<typeof Environment>;
 export const Verification = z.enum(["gps", "device", "photo", "pending", "rejected"]);
 export type Verification = z.infer<typeof Verification>;
 
+const GaitPart = z.object({ distanceM: z.number().nonnegative(), movingTimeS: z.number().nonnegative() }).strict();
+
+/**
+ * The detail inside a GPS recording: each mile's cumulative moving time, and how much was
+ * running vs walking. Stored in activities.splits; only used for stats, never for whether a run counts.
+ */
+export const PaceDetail = z
+  .object({
+    miles: z
+      .array(z.object({ mile: z.number().int().positive(), movingTimeS: z.number().nonnegative() }).strict())
+      .max(1000),
+    run: GaitPart,
+    walk: GaitPart,
+  })
+  .strict();
+export type PaceDetail = z.infer<typeof PaceDetail>;
+
 export const ActivityInput = z
   .object({
     source: ActivitySource,
@@ -44,6 +61,8 @@ export const ActivityInput = z
     evidenceTakenAt: z.coerce.date().optional(),
     /** Android reported that a fix came from a mock-location (GPS spoofing) app. */
     mockedLocation: z.boolean().optional(),
+    /** Mile splits and run vs walk, from a GPS recording. */
+    paceDetail: PaceDetail.optional(),
   })
   .strict();
 export type ActivityInput = z.infer<typeof ActivityInput>;

@@ -1,4 +1,4 @@
-import { raceStats, type RaceStats, type StatActivity } from '@1k/core';
+import { raceStats, type PaceDetail, type RaceStats, type StatActivity } from '@1k/core';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 
@@ -12,6 +12,7 @@ interface Row {
     moving_time_s: number;
     environment: 'outdoor' | 'treadmill';
     elevation_gain_m: number | null;
+    splits: PaceDetail | null;
   };
 }
 
@@ -31,7 +32,7 @@ export function useRunnerStats(race: Race | null | undefined, userId: string | u
     if (!raceId || !userId || !startsAt || !endsAt || !goalM) return;
     const { data, error } = await supabase
       .from('race_activities')
-      .select('activity:activities!inner(started_at, distance_m, moving_time_s, environment, elevation_gain_m)')
+      .select('activity:activities!inner(started_at, distance_m, moving_time_s, environment, elevation_gain_m, splits)')
       .eq('race_id', raceId)
       .eq('user_id', userId);
     if (error) return setError(error.message);
@@ -42,6 +43,7 @@ export function useRunnerStats(race: Race | null | undefined, userId: string | u
       movingTimeS: a.moving_time_s,
       environment: a.environment,
       elevationGainM: a.elevation_gain_m,
+      gait: a.splits?.run && a.splits.walk ? { run: a.splits.run, walk: a.splits.walk } : null,
     }));
     setStats(
       raceStats(activities, {

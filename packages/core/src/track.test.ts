@@ -3,6 +3,7 @@ import {
   decodePolyline,
   encodePolyline,
   haversineM,
+  mileSplits,
   polylineLengthM,
   summarizeTrack,
   type TrackPoint,
@@ -101,5 +102,47 @@ describe("summarizeTrack", () => {
     const s = summarizeTrack(pts);
     expect(s.elevationGainM).toBeGreaterThanOrEqual(27);
     expect(s.elevationGainM).toBeLessThanOrEqual(33);
+  });
+});
+
+describe("running and walking", () => {
+  it("splits a run with a walk break into running and walking", () => {
+    const run = straightRun(300, 3); // about 8:56 a mile
+    const end = run.at(-1)!;
+    const walk = straightRun(120, 1.4, { start: end.t + 1000, lat0: end.lat }); // about 19:10 a mile
+    const s = summarizeTrack([...run, ...walk]);
+    expect(s.gait.run.distanceM).toBeGreaterThan(850);
+    expect(s.gait.run.distanceM).toBeLessThan(950);
+    expect(s.gait.walk.distanceM).toBeGreaterThan(130);
+    expect(s.gait.walk.distanceM).toBeLessThan(200);
+    expect(s.gait.run.movingTimeS).toBeGreaterThanOrEqual(270);
+    expect(s.gait.run.movingTimeS).toBeLessThanOrEqual(330);
+    expect(s.gait.run.distanceM + s.gait.walk.distanceM).toBeCloseTo(s.distanceM);
+  });
+
+  it("calls a steady jog all running", () => {
+    const s = summarizeTrack(straightRun(600, 2.5)); // about 10:44 a mile
+    expect(s.gait.walk.distanceM).toBe(0);
+    expect(s.gait.run.distanceM).toBeCloseTo(s.distanceM);
+  });
+});
+
+describe("mile splits", () => {
+  it("turns cumulative times into each mile's time, with the last part-mile", () => {
+    const splits = mileSplits(
+      [
+        { mile: 1, movingTimeS: 600 },
+        { mile: 2, movingTimeS: 1180 },
+      ],
+      2.5 * METERS_PER_MILE,
+      1480,
+    );
+    expect(splits.map((x) => x.movingTimeS)).toEqual([600, 580, 300]);
+    expect(splits[2]).toMatchObject({ mile: 2.5, paceS: 600 });
+    expect(splits[2]!.miles).toBeCloseTo(0.5);
+  });
+
+  it("leaves out a last stretch under a tenth of a mile", () => {
+    expect(mileSplits([{ mile: 1, movingTimeS: 600 }], 1.05 * METERS_PER_MILE, 630)).toHaveLength(1);
   });
 });

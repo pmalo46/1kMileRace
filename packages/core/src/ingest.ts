@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { resolveDuplicates, type TimedActivity } from "./dedup.ts";
 import { evaluateActivity, type Evaluation, type RunnerContext } from "./rules.ts";
-import { ActivityInput, type RaceRules, type Verification } from "./types.ts";
+import { ActivityInput, type PaceDetail, type RaceRules, type Verification } from "./types.ts";
 
 /** Body of a POST to the ingest-activity edge function. */
 export const IngestRequest = z
@@ -28,6 +28,7 @@ export interface ActivityRow {
   avg_heart_rate: number | null;
   device_name: string | null;
   polyline: string | null;
+  splits: PaceDetail | null;
   verification: Verification;
   flags: Evaluation["issues"];
 }
@@ -74,6 +75,7 @@ export function planIngest(
       avg_heart_rate: a.avgHeartRate ?? null,
       device_name: a.deviceName ?? null,
       polyline: a.polyline ?? null,
+      splits: a.paceDetail ?? null,
       verification: evaluation.verification,
       flags: evaluation.issues,
     },

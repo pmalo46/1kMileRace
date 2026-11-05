@@ -156,8 +156,10 @@ export function RaceStatsView({
         <Text variant="label">Running and walking</Text>
         <SplitBar left="running" right="walking" share={stats.gait.runShare} />
         <Text variant="muted" size={14}>
-          {plural(stats.gait.run.count, 'run')} and {plural(stats.gait.walk.count, 'walk')}, by miles. Slower than{' '}
-          {formatPace(WALK_PACE_S_PER_MI)} a mile counts as walking.
+          Share of miles. Slower than {formatPace(WALK_PACE_S_PER_MI)} a mile counts as walking.
+          {stats.gait.measured > 0
+            ? ' Runs recorded in the app count their walk breaks as walking; others go by their average pace.'
+            : ''}
         </Text>
       </Card>
 
@@ -223,13 +225,14 @@ export function RaceStatsView({
         <View style={{ flexDirection: 'row', gap: Space.sm }}>
           <Tile label="Days in a row" value={String(stats.dayStreak.current)} sub={`best ${stats.dayStreak.longest}`} />
           <Tile
-            label="Weeks in a row"
+            label="Weeks on pace in a row"
             value={String(stats.weekStreak.current)}
             sub={`best ${stats.weekStreak.longest}`}
           />
         </View>
         <Text variant="muted" size={14}>
-          A week counts with at least one run or walk in it.
+          A week is on pace at {formatMiles(stats.weeklyTargetM)} miles, the even pace to{' '}
+          {goalMiles.toLocaleString()}.
         </Text>
       </Card>
 

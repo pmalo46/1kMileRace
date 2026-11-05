@@ -81,10 +81,22 @@ describe("streaks", () => {
     expect(s.dayStreak.current).toBe(2);
   });
 
-  it("counts weeks in a row with an activity", () => {
-    const s = raceStats([act(new Date(2026, 9, 6), 2, 10), act(new Date(2026, 9, 13), 2, 10)], race, now);
-    // Weeks 2 and 3 ran; week 4 is still going.
-    expect(s.weekStreak).toEqual({ current: 2, longest: 2 });
+  it("counts weeks in a row that hit even pace", () => {
+    // 1,000 miles over 365 days is about 19.2 miles a week.
+    const s = raceStats(
+      [
+        act(new Date(2026, 9, 1), 12, 10), // week 1 is 4 days of the race: about 11 miles
+        act(new Date(2026, 9, 6), 10, 10), // week 2 falls short
+        act(new Date(2026, 9, 8), 5, 10),
+        act(new Date(2026, 9, 13), 20, 10), // week 3 hits it
+      ],
+      race,
+      now,
+    );
+    expect(s.weeklyTargetM).toBeCloseTo(milesToMeters((1000 * 7) / 365));
+    expect(s.weeks[0]!.targetM).toBeCloseTo(milesToMeters((1000 * 4) / 365));
+    // Week 4 is still going, so not having hit it yet doesn't break the streak.
+    expect(s.weekStreak).toEqual({ current: 1, longest: 1 });
   });
 });
 
@@ -124,5 +136,19 @@ describe("records and the rest", () => {
     expect(s.bestWeek).toBeNull();
     expect(s.favoriteDayPart).toBeNull();
     expect(s.dayStreak).toEqual({ current: 0, longest: 0 });
+  });
+});
+
+describe("measured run vs walk", () => {
+  it("uses a recording's split, scaled to the saved totals", () => {
+    const mixed = act(now, 4, 12, {
+      gait: { run: { distanceM: 3000, movingTimeS: 1500 }, walk: { distanceM: 1000, movingTimeS: 900 } },
+    });
+    const s = raceStats([mixed, act(now, 2, 20)], race, now);
+    expect(s.gait.measured).toBe(1);
+    // 3 of the recording's 4 miles ran, and the 2-mile walk walked: 3 of 6.
+    expect(s.gait.runShare).toBeCloseTo(0.5);
+    expect(s.gait.run.movingTimeS).toBeCloseTo(4 * 12 * 60 * (1500 / 2400));
+    expect(s.gait.run.count).toBe(1);
   });
 });

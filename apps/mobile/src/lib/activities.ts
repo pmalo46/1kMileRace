@@ -1,4 +1,4 @@
-import type { Evaluation } from '@1k/core';
+import type { Evaluation, PaceDetail } from '@1k/core';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import type { ImagePickerAsset } from 'expo-image-picker';
 
@@ -20,6 +20,8 @@ export interface ActivityDraft {
   deviceName?: string;
   polyline?: string;
   mockedLocation?: boolean;
+  /** Mile splits and run vs walk, from a GPS recording. */
+  paceDetail?: PaceDetail;
   evidenceCount: number;
   evidenceTakenAt?: string;
 }
