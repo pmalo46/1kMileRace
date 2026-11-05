@@ -16,10 +16,10 @@ const act = (at: Date, miles: number, minPerMile: number, extra: Partial<StatAct
 });
 
 describe("run or walk", () => {
-  it("goes by pace, with 14:30 a mile still a run", () => {
+  it("goes by pace, with 15:00 a mile still a run", () => {
     expect(gaitOf(act(now, 1, 14))).toBe("run");
-    expect(gaitOf(act(now, 1, 14.5))).toBe("run");
-    expect(gaitOf(act(now, 1, 15))).toBe("walk");
+    expect(gaitOf(act(now, 1, 15))).toBe("run");
+    expect(gaitOf(act(now, 1, 15.5))).toBe("walk");
   });
 
   it("splits distance and pace between runs and walks", () => {

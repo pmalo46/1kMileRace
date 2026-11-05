@@ -15,8 +15,11 @@ export interface StatActivity {
   elevationGainM: number | null;
 }
 
-/** Slower than 14:30 a mile counts as a walk, whatever it was logged as. */
-export const WALK_PACE_S_PER_MI = 14.5 * 60;
+/**
+ * Slower than 15:00 a mile (4 mph) counts as a walk, whatever it was logged as. Few people walk
+ * faster than that, and few run slower.
+ */
+export const WALK_PACE_S_PER_MI = 15 * 60;
 export const MARATHON_M = 42_195;
 /** Pace records only count activities at least this long, so a GPS blip can't set one. */
 export const RECORD_MIN_M = METERS_PER_MILE;
