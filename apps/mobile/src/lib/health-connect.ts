@@ -148,12 +148,22 @@ export interface HealthSync {
   failed: number;
 }
 
+let syncing: Promise<HealthSync> | null = null;
+
 /**
  * Reads the last week's workouts and logs each new run or walk. The server applies the
  * same rules and duplicate checks as for any other run, so a run recorded both on a watch
- * and in the app counts once.
+ * and in the app counts once. A sync asked for while one is running (Home's, say, and
+ * "Sync now") shares it, so no workout is sent twice.
  */
-export async function syncHealth(userId: string, toFinishM?: number): Promise<HealthSync> {
+export function syncHealth(userId: string, toFinishM?: number): Promise<HealthSync> {
+  syncing ??= readAndLog(userId, toFinishM).finally(() => {
+    syncing = null;
+  });
+  return syncing;
+}
+
+async function readAndLog(userId: string, toFinishM?: number): Promise<HealthSync> {
   const summary: HealthSync = { seen: [], imported: [], alreadyLogged: 0, notCounted: 0, failed: 0 };
   const hc = HC;
   if (!hc || (await healthStatus()) !== 'connected') return summary;
@@ -249,6 +259,7 @@ export async function syncHealth(userId: string, toFinishM?: number): Promise<He
       }
     }
   }
-  localStorage.setItem(HANDLED_KEY, JSON.stringify(handled));
+  // Added to what's stored now rather than replacing it, so nothing another sync noted is lost.
+  localStorage.setItem(HANDLED_KEY, JSON.stringify({ ...loadHandled(), ...handled }));
   return summary;
 }
