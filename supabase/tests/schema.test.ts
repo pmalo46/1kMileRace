@@ -323,6 +323,13 @@ describe("invite preview", () => {
     ]);
   });
 
+  it("hands out eight-letter codes that can't be read as a phone number, and accepts them typed as ABCD-EFGH", async () => {
+    expect(invite).toMatch(/^[a-hj-km-np-z]{8}$/);
+    const typed = `${invite.slice(0, 4).toUpperCase()}-${invite.slice(4).toUpperCase()}`;
+    await db.as(outsider, `select join_race($1)`, [typed]);
+    expect(await db.as(outsider, `select * from race_members where user_id = auth.uid()`)).toHaveLength(1);
+  });
+
   it("returns nothing for a code that doesn't match a race", async () => {
     expect(await asAnon(`select * from invite_preview('nope')`)).toEqual([]);
     expect(await db.as(outsider, `select * from invite_preview('nope')`)).toEqual([]);

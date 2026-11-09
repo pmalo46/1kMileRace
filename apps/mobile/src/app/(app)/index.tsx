@@ -33,7 +33,7 @@ import { greeting } from '@/lib/greeting';
 import { healthStatus, syncHealth } from '@/lib/health-connect';
 import { useSinceLastLook } from '@/lib/last-look';
 import { useMyWeek } from '@/lib/momentum';
-import { inviteLink, markTourSeen, pendingInvite, tourSeen } from '@/lib/onboarding';
+import { formatInviteCode, inviteLink, markTourSeen, pendingInvite, tourSeen } from '@/lib/onboarding';
 import { useRunnerStats } from '@/lib/race-stats';
 import { useStandings } from '@/lib/races';
 import { currentRecording, unsyncedRecordings, uploadRecording } from '@/lib/recorder';
@@ -121,7 +121,7 @@ export default function Home() {
 
   const invite = () =>
     Share.share({
-      message: `I'm running ${goalMiles.toLocaleString()} miles this year. Come with me: ${race.name} on 1K Miles.\n${inviteLink(race.invite_code)}\nOr use the code ${race.invite_code}`,
+      message: `I'm running ${goalMiles.toLocaleString()} miles this year. Come with me: ${race.name} on 1K Miles.\n${inviteLink(race.invite_code)}\nOr use the code ${formatInviteCode(race.invite_code)}`,
     }).catch(() => undefined);
 
   return (

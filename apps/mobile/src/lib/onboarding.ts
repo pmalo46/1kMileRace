@@ -42,17 +42,30 @@ export const pendingInvite = () => read(INVITE);
 export const savePendingInvite = (code: string) => write(INVITE, normalizeInviteCode(code));
 export const clearPendingInvite = () => write(INVITE, null);
 
-export const normalizeInviteCode = (code: string) => code.trim().toLowerCase();
+/** How codes are stored: lowercase, no spaces or dashes. "KMXQ-RTPB" and "kmxqrtpb" are the same code. */
+export const normalizeInviteCode = (code: string) => code.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+/** How codes are shown: eight-letter codes as KMXQ-RTPB, older codes as they are. */
+export function formatInviteCode(code: string): string {
+  const c = normalizeInviteCode(code);
+  return /^[a-z]{8}$/.test(c) ? `${c.slice(0, 4)}-${c.slice(4)}`.toUpperCase() : c;
+}
 
 /** The invite code in a link like onekmiles://join?code=abc123, or null if it isn't one. */
 export function inviteCodeFromPath(path: string): string | null {
-  const match = /(?:^|\/)join\/?\?(?:.*&)?code=([a-z0-9]+)/i.exec(path);
+  const match = /(?:^|\/)join\/?\?(?:.*&)?code=([a-z0-9-]+)/i.exec(path);
   return match ? normalizeInviteCode(match[1]!) : null;
 }
 
-/** What a friend gets when someone taps Invite. */
+/**
+ * What a friend gets when someone taps Invite: a web link, because messaging apps only make
+ * https links tappable. The page there (apps/invite-link) opens the app with the code.
+ * Without EXPO_PUBLIC_INVITE_URL set, the app's own link, which works but often isn't tappable.
+ */
 export function inviteLink(code: string): string {
-  return `onekmiles://join?code=${encodeURIComponent(code)}`;
+  const c = encodeURIComponent(normalizeInviteCode(code));
+  const base = process.env.EXPO_PUBLIC_INVITE_URL?.replace(/\/+$/, '');
+  return base ? `${base}/join/${c}` : `onekmiles://join?code=${c}`;
 }
 
 /** Leaves the join or create screen; the first time, by way of the notifications ask. */

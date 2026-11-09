@@ -9,14 +9,14 @@ import { Field } from '@/components/field';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { savedASpot, useInvitePreview } from '@/lib/invites';
-import { afterJoining, clearPendingInvite, normalizeInviteCode } from '@/lib/onboarding';
+import { afterJoining, clearPendingInvite, formatInviteCode, normalizeInviteCode } from '@/lib/onboarding';
 import { supabase } from '@/lib/supabase';
 import { Space } from '@/theme/tokens';
 
 /** Join by invite code, typed in or carried by an invite link (`?code=`). */
 export default function Join() {
   const params = useLocalSearchParams<{ code?: string }>();
-  const [code, setCode] = useState(params.code ?? '');
+  const [code, setCode] = useState(params.code ? formatInviteCode(params.code) : '');
   const [busy, setBusy] = useState(false);
   const normalized = normalizeInviteCode(code);
   const preview = useInvitePreview(normalized);
@@ -53,7 +53,14 @@ export default function Join() {
       ) : (
         <Text variant="muted">Ask whoever started the race for the code.</Text>
       )}
-      <Field label="Invite code" value={code} onChangeText={setCode} autoCapitalize="none" autoCorrect={false} />
+      <Field
+        label="Invite code"
+        value={code}
+        onChangeText={setCode}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        placeholder="ABCD-EFGH"
+      />
       <View style={{ gap: Space.sm }}>
         <Button title={preview ? 'Join them' : 'Join'} onPress={join} loading={busy} disabled={normalized.length < 4} />
       </View>
