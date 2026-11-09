@@ -306,6 +306,29 @@ describe("row level security", () => {
   });
 });
 
+describe("invite preview", () => {
+  const asAnon = async <T,>(sql: string, params: unknown[] = []) => {
+    await db.pg.exec("set role anon");
+    try {
+      return (await db.pg.query<T>(sql, params)).rows;
+    } finally {
+      await db.pg.exec("reset role");
+    }
+  };
+
+  it("shows a signed-out caller the race name, organizer, runner count and start, and nothing else", async () => {
+    const rows = await asAnon<Record<string, unknown>>(`select * from invite_preview($1)`, [` ${invite.toUpperCase()} `]);
+    expect(rows).toEqual([
+      { name: "Neighborhood 1K", organizer_name: "Organizer", member_count: 3, starts_at: new Date(RACE_START) },
+    ]);
+  });
+
+  it("returns nothing for a code that doesn't match a race", async () => {
+    expect(await asAnon(`select * from invite_preview('nope')`)).toEqual([]);
+    expect(await db.as(outsider, `select * from invite_preview('nope')`)).toEqual([]);
+  });
+});
+
 describe("push tokens", () => {
   const tokens = () => db.q<{ token: string; user_id: string }>(`select token, user_id from push_tokens order by token`);
 
