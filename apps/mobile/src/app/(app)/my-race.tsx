@@ -1,6 +1,7 @@
 import { finishPlan } from '@1k/core';
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { RefreshControl, View } from 'react-native';
+import { Pressable, RefreshControl, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { FinishPlanner } from '@/components/finish-planner';
@@ -9,6 +10,7 @@ import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
+import { resetTour } from '@/lib/onboarding';
 import { useRunnerStats } from '@/lib/race-stats';
 import { useStandings } from '@/lib/races';
 import { Space } from '@/theme/tokens';
@@ -53,6 +55,28 @@ export default function MyRace() {
         </Card>
       )}
       {race && stats && <RaceStatsView stats={stats} name="You" isMe goalMiles={goalMilesOf(race.goal_m)} />}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: Space.lg }}>
+        <TextLink title="How the race works" onPress={() => router.push('/rules')} />
+        {race && session && (
+          <TextLink
+            title="Replay the tour"
+            onPress={() => {
+              resetTour(session.user.id);
+              router.navigate('/');
+            }}
+          />
+        )}
+      </View>
     </Screen>
+  );
+}
+
+function TextLink({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="link" hitSlop={8} style={{ paddingVertical: Space.sm }}>
+      <Text variant="muted" style={{ fontWeight: '700' }}>
+        {title}
+      </Text>
+    </Pressable>
   );
 }
