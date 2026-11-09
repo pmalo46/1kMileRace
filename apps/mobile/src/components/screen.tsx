@@ -1,5 +1,12 @@
-import type { PropsWithChildren } from 'react';
-import { ScrollView, StyleSheet, View, type RefreshControlProps } from 'react-native';
+import type { PropsWithChildren, Ref } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type RefreshControlProps,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Space } from '@/theme/tokens';
@@ -10,15 +17,24 @@ export function Screen({
   scroll = true,
   refreshControl,
   transparent = false,
+  scrollRef,
+  onScroll,
 }: PropsWithChildren<{
   scroll?: boolean;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   /** Lets whatever is behind the screen (e.g. a gradient) show through. */
   transparent?: boolean;
+  scrollRef?: Ref<ScrollView>;
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
 }>) {
   const { colors } = useTheme();
   const body = scroll ? (
-    <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
+    <ScrollView
+      ref={scrollRef}
+      contentContainerStyle={styles.content}
+      refreshControl={refreshControl}
+      onScroll={onScroll}
+      scrollEventThrottle={onScroll ? 16 : undefined}>
       {children}
     </ScrollView>
   ) : (

@@ -13,12 +13,13 @@ import {
   runsPerWeekSoFar,
 } from '@1k/core';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, Share, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Share, View } from 'react-native';
 
 import { Art } from '@/components/art';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { CoachMarks, type CoachStep } from '@/components/coach-marks';
 import { MileWall } from '@/components/mile-wall';
 import { ProgressBar } from '@/components/progress-bar';
 import { Quote } from '@/components/quote';
@@ -32,7 +33,7 @@ import { greeting } from '@/lib/greeting';
 import { healthStatus, syncHealth } from '@/lib/health-connect';
 import { useSinceLastLook } from '@/lib/last-look';
 import { useMyWeek } from '@/lib/momentum';
-import { inviteLink, pendingInvite } from '@/lib/onboarding';
+import { inviteLink, markTourSeen, pendingInvite, tourSeen } from '@/lib/onboarding';
 import { useRunnerStats } from '@/lib/race-stats';
 import { useStandings } from '@/lib/races';
 import { currentRecording, unsyncedRecordings, uploadRecording } from '@/lib/recorder';
@@ -56,6 +57,28 @@ export default function Home() {
   const myPlace = board.find((r) => r.standing.user_id === userId)?.place;
   const finishers = board.filter((r) => r.finished).length;
   const combinedM = standings?.reduce((sum, s) => sum + s.total_distance_m, 0) ?? 0;
+
+  // The first time Home has a race to show, a short tour of it.
+  const scroller = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const recordRef = useRef<View>(null);
+  const weekRef = useRef<View>(null);
+  const togetherRef = useRef<View>(null);
+  const targets = useMemo(() => ({ record: recordRef, week: weekRef, together: togetherRef }), []);
+  const [touring, setTouring] = useState(false);
+  const ready = !!race && !!standings;
+  useFocusEffect(
+    useCallback(() => {
+      if (!ready || !userId || tourSeen(userId)) return;
+      const t = setTimeout(() => setTouring(true), 500);
+      return () => clearTimeout(t);
+    }, [ready, userId]),
+  );
+  const endTour = () => {
+    if (userId) markTourSeen(userId);
+    setTouring(false);
+    scroller.current?.scrollTo({ y: 0, animated: true });
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -99,12 +122,16 @@ export default function Home() {
   const invite = () =>
     Share.share({
       message: `I'm running ${goalMiles.toLocaleString()} miles this year. Come with me: ${race.name} on 1K Miles.\n${inviteLink(race.invite_code)}\nOr use the code ${race.invite_code}`,
-    }).catch(
-      () => undefined,
-    );
+    }).catch(() => undefined);
 
   return (
-    <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+    <Screen
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      scrollRef={scroller}
+      onScroll={(e) => {
+        scrollY.current = e.nativeEvent.contentOffset.y;
+      }}>
+      {touring && <CoachMarks steps={TOUR} targets={targets} scroller={scroller} scrollY={scrollY} onDone={endTour} />}
       <View style={{ gap: Space.xs }}>
         <Text variant="label">{race.name}</Text>
         <Text variant="heading" size={28}>
@@ -159,7 +186,9 @@ export default function Home() {
         )}
       </Card>
 
-      <Button title="Start a run" onPress={() => router.push('/record')} />
+      <View ref={recordRef} collapsable={false}>
+        <Button title="Start a run" onPress={() => router.push('/record')} />
+      </View>
       <View style={{ flexDirection: 'row', gap: Space.sm }}>
         <View style={{ flex: 1 }}>
           <Button title="Log manually" variant="secondary" onPress={() => router.push('/log-run')} />
@@ -170,44 +199,48 @@ export default function Home() {
       </View>
 
       {week && (
-        <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text variant="label">This week</Text>
-            <Text variant="muted" size={13}>
-              {week.days} {week.days === 1 ? 'day' : 'days'} · {formatMiles(weekM)} mi
-            </Text>
-          </View>
-          <WeekStrip ran={week.ran} today={week.today} />
-          {!pace.finished && targetM > 0 && (
-            <View style={{ gap: Space.xs }}>
-              <ProgressBar progress={weekM / targetM} />
-              <Text style={{ fontWeight: '700', color: onPaceThisWeek ? colors.onPace : colors.text }}>
-                {onPaceThisWeek
-                  ? `On pace this week ✓${weeksOnPace >= 2 ? ` · ${weeksOnPace} weeks in a row` : ''}`
-                  : `${formatMiles(weekM)} of ${formatMiles(targetM)} mi to stay on pace`}
+        <View ref={weekRef} collapsable={false}>
+          <Card>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text variant="label">This week</Text>
+              <Text variant="muted" size={13}>
+                {week.days} {week.days === 1 ? 'day' : 'days'} · {formatMiles(weekM)} mi
               </Text>
             </View>
-          )}
-        </Card>
+            <WeekStrip ran={week.ran} today={week.today} />
+            {!pace.finished && targetM > 0 && (
+              <View style={{ gap: Space.xs }}>
+                <ProgressBar progress={weekM / targetM} />
+                <Text style={{ fontWeight: '700', color: onPaceThisWeek ? colors.onPace : colors.text }}>
+                  {onPaceThisWeek
+                    ? `On pace this week ✓${weeksOnPace >= 2 ? ` · ${weeksOnPace} weeks in a row` : ''}`
+                    : `${formatMiles(weekM)} of ${formatMiles(targetM)} mi to stay on pace`}
+                </Text>
+              </View>
+            )}
+          </Card>
+        </View>
       )}
 
-      <Card>
-        <Text variant="label">Together</Text>
-        <Text variant="heading">{formatMiles(combinedM, 0)} miles as a team</Text>
-        <Text variant="muted">
-          {finishers} of {standings.length} finished
-        </Text>
-        {recap && before && (
-          <Pressable
-            onPress={() => router.push('/leaderboard')}
-            accessibilityRole="link"
-            style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: Space.sm, gap: 2 }}>
-            <Text style={{ fontWeight: '800' }}>{recapHeadline(recap, before.at)} ›</Text>
-            {firstLine && <Text variant="muted">{`${firstLine.emoji} ${firstLine.text}`}</Text>}
-          </Pressable>
-        )}
-        <Button title="Invite a friend" variant="secondary" onPress={invite} />
-      </Card>
+      <View ref={togetherRef} collapsable={false}>
+        <Card>
+          <Text variant="label">Together</Text>
+          <Text variant="heading">{formatMiles(combinedM, 0)} miles as a team</Text>
+          <Text variant="muted">
+            {finishers} of {standings.length} finished
+          </Text>
+          {recap && before && (
+            <Pressable
+              onPress={() => router.push('/leaderboard')}
+              accessibilityRole="link"
+              style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: Space.sm, gap: 2 }}>
+              <Text style={{ fontWeight: '800' }}>{recapHeadline(recap, before.at)} ›</Text>
+              {firstLine && <Text variant="muted">{`${firstLine.emoji} ${firstLine.text}`}</Text>}
+            </Pressable>
+          )}
+          <Button title="Invite a friend" variant="secondary" onPress={invite} />
+        </Card>
+      </View>
 
       {rival && (
         <Pressable onPress={() => router.push('/leaderboard')} accessibilityRole="link">
@@ -230,7 +263,11 @@ export default function Home() {
         <Stat label="Runs" value={String(me?.activity_count ?? 0)} />
         <Stat
           label="Avg pace"
-          value={me?.counted_distance_m ? formatPace(paceSecondsPerMile(me.counted_distance_m, me.counted_moving_time_s)) : '–'}
+          value={
+            me?.counted_distance_m
+              ? formatPace(paceSecondsPerMile(me.counted_distance_m, me.counted_moving_time_s))
+              : '–'
+          }
         />
       </Pressable>
 
@@ -238,6 +275,13 @@ export default function Home() {
     </Screen>
   );
 }
+
+const TOUR: CoachStep[] = [
+  { target: 'record', text: 'Headed out? Start here. Forgot to record? Log it after.' },
+  { target: 'week', text: "This week's number. Hit it, week after week, and the finish takes care of itself." },
+  { target: 'together', text: "Everybody's miles, in one place. When someone shows up, let them know you saw." },
+  { text: "Down below: My Race is your numbers. Feed is everyone's runs. Leaderboard is who's out front." },
+];
 
 /** "Sep 14", with the year only when it isn't this one. */
 function shortDate(d: Date, now: Date = new Date()): string {
@@ -278,7 +322,9 @@ function RecordingStatus() {
   if (open) {
     return (
       <Card style={{ borderColor: colors.accent, borderWidth: 2 }}>
-        <Text variant="heading">Your {open.type} is {open.state === 'paused' ? 'paused' : 'still recording'}</Text>
+        <Text variant="heading">
+          Your {open.type} is {open.state === 'paused' ? 'paused' : 'still recording'}
+        </Text>
         <Button title="Back to it" onPress={() => router.push('/record')} />
       </Card>
     );
