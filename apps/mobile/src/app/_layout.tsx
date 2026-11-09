@@ -32,6 +32,7 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="sign-in" />
+          <Stack.Screen name="intro" options={{ gestureEnabled: false }} />
         </Stack.Protected>
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="(app)" />

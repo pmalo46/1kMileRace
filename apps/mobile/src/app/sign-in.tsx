@@ -1,6 +1,7 @@
 import { milestoneQuote } from '@1k/core';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Field } from '@/components/field';
@@ -8,6 +9,7 @@ import { ProgressRing } from '@/components/progress-ring';
 import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
+import { introSeen } from '@/lib/onboarding';
 import { supabase } from '@/lib/supabase';
 import { Space } from '@/theme/tokens';
 
@@ -16,7 +18,8 @@ import { Space } from '@/theme/tokens';
  * Apple/Google sign-in come with the dev build.
  */
 export default function SignIn() {
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>(params.mode === 'sign-up' ? 'sign-up' : 'sign-in');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,6 +37,9 @@ export default function SignIn() {
     // Only happens if "Confirm email" gets switched back on in Supabase.
     if (!data.session) Alert.alert('Almost there', 'Check your email to confirm your account, then sign in.');
   };
+
+  // First launch: the race gets explained before anyone is asked for an email.
+  if (!introSeen()) return <Redirect href="/intro" />;
 
   const ready = email.includes('@') && password.length >= 6 && (!signingUp || name.trim().length > 0);
 
@@ -84,6 +90,15 @@ export default function SignIn() {
             variant="secondary"
             onPress={() => setMode(signingUp ? 'sign-in' : 'sign-up')}
           />
+          <Pressable
+            onPress={() => router.push({ pathname: '/intro', params: { replay: '1' } })}
+            accessibilityRole="link"
+            hitSlop={8}
+            style={{ alignSelf: 'center', paddingVertical: Space.sm }}>
+            <Text variant="muted" style={{ fontWeight: '700' }}>
+              How the race works
+            </Text>
+          </Pressable>
         </View>
       </Screen>
     </KeyboardAvoidingView>
