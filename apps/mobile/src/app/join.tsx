@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 
 import { Art } from '@/components/art';
@@ -9,7 +9,7 @@ import { Field } from '@/components/field';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { savedASpot, useInvitePreview } from '@/lib/invites';
-import { afterJoining, normalizeInviteCode } from '@/lib/onboarding';
+import { afterJoining, clearPendingInvite, normalizeInviteCode } from '@/lib/onboarding';
 import { supabase } from '@/lib/supabase';
 import { Space } from '@/theme/tokens';
 
@@ -20,6 +20,11 @@ export default function Join() {
   const [busy, setBusy] = useState(false);
   const normalized = normalizeInviteCode(code);
   const preview = useInvitePreview(normalized);
+
+  // The link has been delivered; closing this screen shouldn't bring it back on every visit to Home.
+  useEffect(() => {
+    if (params.code) clearPendingInvite();
+  }, [params.code]);
 
   const join = async () => {
     setBusy(true);
