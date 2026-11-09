@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import Storage from 'expo-sqlite/kv-store';
 
 /**
@@ -52,4 +53,11 @@ export function inviteCodeFromPath(path: string): string | null {
 /** What a friend gets when someone taps Invite. */
 export function inviteLink(code: string): string {
   return `onekmiles://join?code=${encodeURIComponent(code)}`;
+}
+
+/** Leaves the join or create screen; the first time, by way of the notifications ask. */
+export function afterJoining() {
+  clearPendingInvite();
+  if (pushAsked()) router.back();
+  else router.replace('/nudges');
 }

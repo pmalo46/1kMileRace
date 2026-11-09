@@ -16,11 +16,11 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, Share, View } from 'react-native';
 
+import { Art } from '@/components/art';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { MileWall } from '@/components/mile-wall';
 import { ProgressBar } from '@/components/progress-bar';
-import { ProgressRing } from '@/components/progress-ring';
 import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
 import { recapHeadline, recapLines } from '@/components/since-last-look';
@@ -32,6 +32,7 @@ import { greeting } from '@/lib/greeting';
 import { healthStatus, syncHealth } from '@/lib/health-connect';
 import { useSinceLastLook } from '@/lib/last-look';
 import { useMyWeek } from '@/lib/momentum';
+import { inviteLink, pendingInvite } from '@/lib/onboarding';
 import { useRunnerStats } from '@/lib/race-stats';
 import { useStandings } from '@/lib/races';
 import { currentRecording, unsyncedRecordings, uploadRecording } from '@/lib/recorder';
@@ -96,7 +97,9 @@ export default function Home() {
   const firstLine = recap ? recapLines(recap, me)[0] : undefined;
 
   const invite = () =>
-    Share.share({ message: `Join me in ${race.name} on 1K Miles. Our invite code is ${race.invite_code}.` }).catch(
+    Share.share({
+      message: `I'm running ${goalMiles.toLocaleString()} miles this year. Come with me: ${race.name} on 1K Miles.\n${inviteLink(race.invite_code)}\nOr use the code ${race.invite_code}`,
+    }).catch(
       () => undefined,
     );
 
@@ -345,22 +348,37 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function NoRaceYet() {
+  // Someone who came in on an invite link goes straight to that race.
+  useFocusEffect(
+    useCallback(() => {
+      const code = pendingInvite();
+      if (code) router.push({ pathname: '/join', params: { code } });
+    }, []),
+  );
+
   return (
     <Screen>
-      <View style={{ alignItems: 'center', gap: Space.md, marginTop: Space.xxl }}>
-        <ProgressRing progress={0} size={180} stroke={16}>
-          <Text variant="display" size={40}>
-            0
-          </Text>
-        </ProgressRing>
+      <View style={{ alignItems: 'center', gap: Space.md, marginTop: Space.xl }}>
+        <Art name="no-race" />
         <Text variant="heading" size={28} style={{ textAlign: 'center' }}>
-          Your 1,000 miles start here
+          Your number&apos;s ready.{'\n'}Now you need a race.
         </Text>
-        <Quote quote={milestoneQuote(1)} align="center" />
+        <Text variant="muted" style={{ textAlign: 'center' }}>
+          Got a code from a friend? Use it. Nobody to run with yet? Start one and bring them in.
+        </Text>
       </View>
       <View style={{ gap: Space.sm, marginTop: Space.lg }}>
-        <Button title="Join a race" onPress={() => router.push('/join')} />
-        <Button title="Start a race" variant="secondary" onPress={() => router.push('/create-race')} />
+        <Button title="Join with a code" onPress={() => router.push('/join')} />
+        <Button title="Start one" variant="secondary" onPress={() => router.push('/create-race')} />
+        <Pressable
+          onPress={() => router.push('/rules')}
+          accessibilityRole="link"
+          hitSlop={8}
+          style={{ alignSelf: 'center', paddingVertical: Space.sm }}>
+          <Text variant="muted" style={{ fontWeight: '700' }}>
+            How the race works
+          </Text>
+        </Pressable>
       </View>
     </Screen>
   );

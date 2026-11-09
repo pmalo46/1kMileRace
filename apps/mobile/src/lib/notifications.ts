@@ -73,10 +73,25 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   }
 }
 
-/** Saves this device's push token for the signed-in user, so the server can reach them. */
-export async function registerForPush(): Promise<void> {
+/** True when notifications are already allowed, without asking. */
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (!Notifications || Platform.OS === 'web') return false;
+  try {
+    await ensureChannels(Notifications);
+    return (await Notifications.getPermissionsAsync()).granted;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Saves this device's push token for the signed-in user, so the server can reach them.
+ * Without `ask`, only when permission was already granted: the first ask comes from the
+ * nudges screen after joining a race, where it has a reason attached.
+ */
+export async function registerForPush({ ask = false }: { ask?: boolean } = {}): Promise<void> {
   if (!Notifications || inExpoGo) return;
-  if (!(await ensureNotificationPermission())) return;
+  if (!(await (ask ? ensureNotificationPermission() : hasNotificationPermission()))) return;
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   if (!projectId) return;
   try {

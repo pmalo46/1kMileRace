@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -6,6 +5,7 @@ import { Button } from '@/components/button';
 import { Field } from '@/components/field';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
+import { afterJoining } from '@/lib/onboarding';
 import { supabase } from '@/lib/supabase';
 
 function slugify(name: string): string {
@@ -41,7 +41,7 @@ export default function CreateRace() {
     });
     setBusy(false);
     if (error) return Alert.alert('Couldn’t create race', error.message);
-    router.back();
+    afterJoining();
   };
 
   return (
