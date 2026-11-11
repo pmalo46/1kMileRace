@@ -23,6 +23,8 @@ The race is 1,000 miles, run or walked, over 365 days. Two people win: the first
 | `icon` | Bib #1000 with four safety pins on the Sunrise gradient | 1024×1024 master. iOS `.icon` (Icon Composer). Android adaptive: foreground, background and a monochrome version |
 | `splash` | The bib on its own, no background | 600×600 transparent PNG |
 | `intro-bib` | Bib #1000, pinned at all four corners, slightly crooked | 1170×1170 transparent PNG |
+| `intro-anywhere` | A race-packet course map, but the "course" is a scatter of pins in different places (a neighborhood block, a beach, an airport, a treadmill) with little clock times beside them: 5:40 am, 12:15 pm, 9:30 pm | 1170×1170 transparent PNG |
+| `intro-watch` | A running watch lying next to the bib, its face showing 3.1 mi | 1170×1170 transparent PNG |
 | `intro-rules` | A split card / pace card, handwritten notes on it: "1 mile minimum", "log within 7 days", "treadmill? photo" | 1170×1170 transparent PNG |
 | `intro-medals` | Two finisher medals on Sunrise ribbons, one stamped FIRST, one stamped FASTEST | 1170×1170 transparent PNG |
 | `intro-crew` | A polaroid of a finish line. A mixed group, arms up, a homemade banner reading 1,000 | 1170×1170 transparent PNG |
@@ -46,6 +48,8 @@ Shared style line, appended to every prompt:
 - **icon:** a white running race bib with the number 1000 in large black condensed numerals, a coral-to-yellow gradient stripe across the top, four silver safety pins at the corners, centered, filling the frame, on a coral-to-yellow gradient square
 - **splash:** the same race bib, number 1000, four safety pins, alone, centered
 - **intro-bib:** a race bib numbered 1000, pinned at each corner with safety pins, lying slightly crooked, a few spare pins nearby
+- **intro-anywhere:** a race course map card lying flat, with pins scattered across very different places (a city block, a beach, an airport, a treadmill), each pin labelled with a different time of day like 5:40 am and 9:30 pm, dotted lines between them
+- **intro-watch:** a sporty wristwatch lying flat beside a race bib numbered 1000, the watch face showing 3.1 mi in large digits
 - **intro-rules:** a small paper pace card with handwritten notes reading "1 mile minimum", "log it within 7 days" and "treadmill? take a photo", a pencil lying beside it
 - **intro-medals:** two round finisher medals on gradient ribbons lying side by side, one engraved FIRST, one engraved FASTEST
 - **intro-crew:** a polaroid photo lying on a table, showing a diverse group of runners and walkers of different ages and body types at a finish line, arms raised, holding a homemade banner reading 1,000

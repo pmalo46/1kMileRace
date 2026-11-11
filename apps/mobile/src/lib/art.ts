@@ -6,6 +6,8 @@ import type { ImageSourcePropType } from 'react-native';
  */
 export const ART = {
   'intro-bib': null,
+  'intro-anywhere': null,
+  'intro-watch': null,
   'intro-rules': null,
   'intro-medals': null,
   'intro-crew': null,
