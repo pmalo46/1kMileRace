@@ -63,6 +63,12 @@ export const ActivityInput = z
     mockedLocation: z.boolean().optional(),
     /** Mile splits and run vs walk, from a GPS recording. */
     paceDetail: PaceDetail.optional(),
+    /**
+     * False when the runner typed in the miles but didn't time the run. The server then sets
+     * the moving time itself (see untimedMovingTimeS); whatever time came with it is ignored.
+     * Only sent when false, so older servers keep accepting every timed run.
+     */
+    timeRecorded: z.boolean().optional(),
   })
   .strict();
 export type ActivityInput = z.infer<typeof ActivityInput>;

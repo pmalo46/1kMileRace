@@ -6,7 +6,6 @@ import {
   formatPace,
   metersToMiles,
   milestoneQuote,
-  paceSecondsPerMile,
   paceStatus,
   quoteOfTheDay,
   rivalAhead,
@@ -263,11 +262,7 @@ export default function Home() {
         <Stat label="Runs" value={String(me?.activity_count ?? 0)} />
         <Stat
           label="Avg pace"
-          value={
-            me?.counted_distance_m
-              ? formatPace(paceSecondsPerMile(me.counted_distance_m, me.counted_moving_time_s))
-              : '–'
-          }
+          value={stats?.avgPaceS != null ? formatPace(stats.avgPaceS) : '–'}
         />
       </Pressable>
 

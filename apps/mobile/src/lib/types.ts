@@ -34,7 +34,14 @@ export interface FeedItem {
   payload: { miles?: number };
   created_at: string;
   actor: { display_name: string; avatar_url: string | null } | null;
-  activity: { type: 'run' | 'walk'; environment: 'outdoor' | 'treadmill'; distance_m: number; moving_time_s: number } | null;
+  activity: {
+    type: 'run' | 'walk';
+    environment: 'outdoor' | 'treadmill';
+    distance_m: number;
+    moving_time_s: number;
+    /** False for miles typed in without a time: moving_time_s is then a stand-in, not shown. */
+    time_recorded?: boolean;
+  } | null;
   cheers: { user_id: string; emoji: string }[];
   comments: { count: number }[];
   /** The newest comment, if any. */

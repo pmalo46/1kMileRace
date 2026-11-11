@@ -22,6 +22,30 @@ function input(overrides: Partial<ActivityInput> = {}): ActivityInput {
 const plan = (a: ActivityInput, existing: Parameters<typeof planIngest>[1] = []) =>
   planIngest(a, existing, DEFAULT_RACE_RULES, now);
 
+describe("untimed runs", () => {
+  it("count in full, timed at the race's slowest valid pace whatever time came with them", () => {
+    const p = plan(input({ timeRecorded: false, movingTimeS: 60, elapsedTimeS: 60 }));
+    expect(p.kind).toBe("insert");
+    if (p.kind !== "insert") return;
+    expect(p.row.time_recorded).toBe(false);
+    expect(p.row.distance_m).toBeCloseTo(milesToMeters(3.1));
+    expect(p.row.moving_time_s).toBe(Math.ceil(3.1 * DEFAULT_RACE_RULES.slowestPaceSecPerMile));
+    expect(p.row.elapsed_time_s).toBe(p.row.moving_time_s);
+    expect(p.row.ended_at).toBe("2026-10-02T12:30:00.000Z");
+    expect(p.row.flags.map((f) => f.code)).not.toContain("pace_too_slow");
+  });
+
+  it("are only for runs added by hand", () => {
+    expect(plan(input({ source: "app_gps", timeRecorded: false })).kind).toBe("rejected");
+  });
+
+  it("leave timed runs as they were", () => {
+    const p = plan(input());
+    expect(p.kind === "insert" && p.row.time_recorded).toBe(true);
+    expect(p.kind === "insert" && p.row.moving_time_s).toBe(30 * 60);
+  });
+});
+
 describe("planIngest", () => {
   it("stores a recording's mile splits and run vs walk", () => {
     const paceDetail = {

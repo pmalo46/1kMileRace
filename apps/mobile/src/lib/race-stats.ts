@@ -13,6 +13,8 @@ interface Row {
     environment: 'outdoor' | 'treadmill';
     elevation_gain_m: number | null;
     splits: PaceDetail | null;
+    type: 'run' | 'walk';
+    time_recorded: boolean;
   };
 }
 
@@ -32,7 +34,9 @@ export function useRunnerStats(race: Race | null | undefined, userId: string | u
     if (!raceId || !userId || !startsAt || !endsAt || !goalM) return;
     const { data, error } = await supabase
       .from('race_activities')
-      .select('activity:activities!inner(started_at, distance_m, moving_time_s, environment, elevation_gain_m, splits)')
+      .select(
+        'activity:activities!inner(started_at, distance_m, moving_time_s, environment, elevation_gain_m, splits, type, time_recorded)',
+      )
       .eq('race_id', raceId)
       .eq('user_id', userId);
     if (error) return setError(error.message);
@@ -44,6 +48,9 @@ export function useRunnerStats(race: Race | null | undefined, userId: string | u
       environment: a.environment,
       elevationGainM: a.elevation_gain_m,
       gait: a.splits?.run && a.splits.walk ? { run: a.splits.run, walk: a.splits.walk } : null,
+      // Missing on a server from before untimed runs: every run was timed then.
+      timed: a.time_recorded !== false,
+      type: a.type,
     }));
     setStats(
       raceStats(activities, {

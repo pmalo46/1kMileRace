@@ -12,7 +12,7 @@ export const CHEER_EMOJIS = ['🔥', '👏', '💪', '🎉'] as const;
 
 const FEED_ITEM =
   'id, type, actor_id, payload, created_at, actor:profiles!feed_items_actor_id_fkey(display_name, avatar_url), ' +
-  'activity:activities(type, environment, distance_m, moving_time_s), cheers(user_id, emoji), comments(count), ' +
+  'activity:activities(type, environment, distance_m, moving_time_s, time_recorded), cheers(user_id, emoji), comments(count), ' +
   'latest:comments(user_id, body, gif_url, author:profiles(display_name))';
 
 /** Feed items with their newest comment as `latest`. */

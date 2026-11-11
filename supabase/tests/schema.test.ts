@@ -390,6 +390,15 @@ describe("logging runs", () => {
     expect((await standing(ann))!.counted_distance_m).toBeCloseTo(3 * MILE);
   });
 
+  it("keeps whether a run was timed, and counts untimed miles in full", async () => {
+    await ingest(ann, row({ source: "manual", environment: "outdoor", time_recorded: false, moving_time_s: 5400, elapsed_time_s: 5400 }));
+    await ingest(bo, row({ source: "manual", environment: "outdoor" }));
+    const rows = await db.q<{ user_id: string; time_recorded: boolean }>(`select user_id, time_recorded from activities`);
+    expect(rows.find((r) => r.user_id === ann)!.time_recorded).toBe(false);
+    expect(rows.find((r) => r.user_id === bo)!.time_recorded).toBe(true);
+    expect((await standing(ann))!.counted_distance_m).toBeCloseTo(3 * MILE);
+  });
+
   it("accepts hand-entered outdoor runs", async () => {
     await ingest(ann, row({ source: "manual", environment: "outdoor" }));
     expect((await standing(ann))!.activity_count).toBe(1);

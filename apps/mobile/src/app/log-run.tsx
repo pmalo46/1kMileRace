@@ -7,12 +7,13 @@ import {
   milesToMeters,
   paceSecondsPerMile,
   SECONDS_PER_DAY,
+  untimedMovingTimeS,
 } from '@1k/core';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Switch, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -44,6 +45,7 @@ export default function LogRun() {
   const [hours, setHours] = useState('');
   const [minutes, setMinutes] = useState('');
   const [seconds, setSeconds] = useState('');
+  const [timed, setTimed] = useState(true);
   const [finishedAt, setFinishedAt] = useState(() => new Date());
   const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset>();
   const [busy, setBusy] = useState(false);
@@ -51,8 +53,13 @@ export default function LogRun() {
 
   const now = new Date();
   const earliest = new Date(now.getTime() - DEFAULT_RACE_RULES.lateLogDays * SECONDS_PER_DAY * 1000);
-  const durationS = Math.round(num(hours) * 3600 + num(minutes) * 60 + num(seconds));
   const distanceM = milesToMeters(num(miles));
+  // Untimed: the server sets the same stand-in time; it's filled in here so the rules check matches.
+  const durationS = timed
+    ? Math.round(num(hours) * 3600 + num(minutes) * 60 + num(seconds))
+    : distanceM > 0
+      ? untimedMovingTimeS(distanceM, DEFAULT_RACE_RULES)
+      : 0;
   const treadmill = where === 'treadmill';
   const takenAt = photo ? photoTakenAt(photo) : undefined;
 
@@ -69,6 +76,7 @@ export default function LogRun() {
           elapsedTimeS: durationS,
           evidenceCount: treadmill && photo ? 1 : 0,
           evidenceTakenAt: treadmill ? takenAt?.toISOString() : undefined,
+          ...(timed ? {} : { timeRecorded: false as const }),
         }
       : null;
 
@@ -132,26 +140,37 @@ export default function LogRun() {
         />
 
         <Field label="Distance (miles)" value={miles} onChangeText={setMiles} keyboardType="decimal-pad" placeholder="3.1" />
-        <View style={{ flexDirection: 'row', gap: Space.sm }}>
-          {(
-            [
-              ['Hours', hours, setHours, '0'],
-              ['Minutes', minutes, setMinutes, '30'],
-              ['Seconds', seconds, setSeconds, '00'],
-            ] as const
-          ).map(([label, value, set, placeholder]) => (
-            <View key={label} style={{ flex: 1 }}>
-              <Field label={label} value={value} onChangeText={set} keyboardType="number-pad" placeholder={placeholder} maxLength={3} />
-            </View>
-          ))}
+        {timed && (
+          <View style={{ flexDirection: 'row', gap: Space.sm }}>
+            {(
+              [
+                ['Hours', hours, setHours, '0'],
+                ['Minutes', minutes, setMinutes, '30'],
+                ['Seconds', seconds, setSeconds, '00'],
+              ] as const
+            ).map(([label, value, set, placeholder]) => (
+              <View key={label} style={{ flex: 1 }}>
+                <Field label={label} value={value} onChangeText={set} keyboardType="number-pad" placeholder={placeholder} maxLength={3} />
+              </View>
+            ))}
+          </View>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Space.md }}>
+          <Text style={{ flex: 1, fontWeight: '700' }}>I didn&apos;t time it</Text>
+          <Switch
+            value={!timed}
+            onValueChange={(off) => setTimed(!off)}
+            trackColor={{ true: colors.accent, false: colors.track }}
+            accessibilityLabel="I didn't time it"
+          />
         </View>
-        <DateTimeField
-          label="Finished"
-          value={finishedAt}
-          onChange={setFinishedAt}
-          minimumDate={earliest}
-          maximumDate={now}
-        />
+        {!timed && (
+          <Text variant="muted" style={{ lineHeight: 21 }}>
+            Your miles count. For Fastest 1,000, untimed miles count at {formatPace(DEFAULT_RACE_RULES.slowestPaceSecPerMile)} a mile, the
+            slowest pace the race allows.
+          </Text>
+        )}
+        <DateTimeField label="Finished" value={finishedAt} onChange={setFinishedAt} minimumDate={earliest} maximumDate={now} />
 
         {treadmill && (
           <Card>
@@ -177,9 +196,7 @@ export default function LogRun() {
 
         {draft && (
           <View style={{ gap: Space.xs }}>
-            <Text variant="muted">
-              {formatPace(paceSecondsPerMile(distanceM, durationS))} /mi pace
-            </Text>
+            {timed && <Text variant="muted">{formatPace(paceSecondsPerMile(distanceM, durationS))} /mi pace</Text>}
             {blockers.map((i) => (
               <Text key={i.code} style={{ color: colors.danger, fontWeight: '700' }}>
                 {i.message}

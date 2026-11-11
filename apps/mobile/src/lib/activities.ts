@@ -24,6 +24,8 @@ export interface ActivityDraft {
   paceDetail?: PaceDetail;
   evidenceCount: number;
   evidenceTakenAt?: string;
+  /** Only ever false (miles typed in without a time); left out for every timed run. */
+  timeRecorded?: false;
 }
 
 /** A failed save, with the edge function's HTTP status when there was one (409 = already logged). */

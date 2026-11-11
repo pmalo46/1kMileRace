@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { resolveDuplicates, type TimedActivity } from "./dedup.ts";
-import { evaluateActivity, type Evaluation, type RunnerContext } from "./rules.ts";
+import { evaluateActivity, isUntimed, withUntimedTime, type Evaluation, type RunnerContext } from "./rules.ts";
 import { ActivityInput, type PaceDetail, type RaceRules, type Verification } from "./types.ts";
 
 /** Body of a POST to the ingest-activity edge function. */
@@ -29,6 +29,7 @@ export interface ActivityRow {
   device_name: string | null;
   polyline: string | null;
   splits: PaceDetail | null;
+  time_recorded: boolean;
   verification: Verification;
   flags: Evaluation["issues"];
 }
@@ -50,6 +51,7 @@ export function planIngest(
   now: Date = new Date(),
   runner: RunnerContext = {},
 ): IngestPlan {
+  a = withUntimedTime(a, rules);
   const evaluation = evaluateActivity(a, rules, now, runner);
   if (evaluation.status === "rejected") return { kind: "rejected", evaluation };
 
@@ -76,6 +78,7 @@ export function planIngest(
       device_name: a.deviceName ?? null,
       polyline: a.polyline ?? null,
       splits: a.paceDetail ?? null,
+      time_recorded: !isUntimed(a),
       verification: evaluation.verification,
       flags: evaluation.issues,
     },

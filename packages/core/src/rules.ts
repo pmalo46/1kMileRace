@@ -42,6 +42,28 @@ const ROUTE_TOLERANCE_M = 50;
 const FINISH_TOLERANCE_M = 0.5;
 
 /** What the rules need to know about the runner beyond the activity itself. */
+/**
+ * The moving time an untimed run gets: the race's slowest valid pace (30:00 a mile by
+ * default; anything slower is already flagged as slower than a walk). The miles count in
+ * full, and since no accepted run is slower, leaving the time out can't help anyone toward
+ * Fastest 1,000.
+ */
+export function untimedMovingTimeS(distanceM: number, rules: RaceRules): number {
+  return Math.max(1, Math.ceil(metersToMiles(distanceM) * rules.slowestPaceSecPerMile));
+}
+
+export const isUntimed = (a: Pick<ActivityInput, "timeRecorded">) => a.timeRecorded === false;
+
+/**
+ * An untimed run with its stand-in time filled in, ending when the runner said it did.
+ * Only runs typed in by hand can be untimed; a recording or a watch always has its time.
+ */
+export function withUntimedTime(a: ActivityInput, rules: RaceRules): ActivityInput {
+  if (!isUntimed(a) || !isHandEntered(a)) return a;
+  const s = untimedMovingTimeS(a.distanceM, rules);
+  return { ...a, movingTimeS: s, elapsedTimeS: s, startedAt: new Date(a.endedAt.getTime() - s * 1000) };
+}
+
 export interface RunnerContext {
   /**
    * The least distance the runner still needs to finish a race this activity falls in.
@@ -73,6 +95,9 @@ export function evaluateActivity(
   const flag = (code: Issue["code"], message: string) =>
     issues.push({ code, severity: "flag", message });
 
+  if (isUntimed(a) && !isHandEntered(a)) {
+    reject("bad_times", "Only runs added by hand can be logged without a time.");
+  }
   const durationS = (a.endedAt.getTime() - a.startedAt.getTime()) / 1000;
   if (durationS <= 0 || a.movingTimeS <= 0 || a.movingTimeS > a.elapsedTimeS + 1) {
     reject("bad_times", "The start, end, or moving time for this activity doesn't add up.");
@@ -112,7 +137,8 @@ export function evaluateActivity(
     }
   }
 
-  if (a.distanceM > 0 && a.movingTimeS > 0) {
+  // An untimed run's pace is a stand-in, not something the runner did.
+  if (a.distanceM > 0 && a.movingTimeS > 0 && !isUntimed(a)) {
     const pace = paceSecondsPerMile(a.distanceM, a.movingTimeS);
     if (pace < rules.fastestPaceSecPerMile) {
       flag("pace_too_fast", `A ${formatPace(pace)}/mi pace is faster than we expect on foot.`);
