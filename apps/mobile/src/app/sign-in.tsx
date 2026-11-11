@@ -10,7 +10,7 @@ import { Quote } from '@/components/quote';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { introSeen } from '@/lib/onboarding';
-import { supabase } from '@/lib/supabase';
+import { errorMessage, supabase } from '@/lib/supabase';
 import { Space } from '@/theme/tokens';
 
 /**
@@ -33,7 +33,7 @@ export default function SignIn() {
       ? await supabase.auth.signUp({ ...credentials, options: { data: { display_name: name.trim() } } })
       : await supabase.auth.signInWithPassword(credentials);
     setBusy(false);
-    if (error) return Alert.alert(signingUp ? 'Couldn’t create account' : 'Couldn’t sign in', error.message);
+    if (error) return Alert.alert(signingUp ? 'Couldn’t create account' : 'Couldn’t sign in', errorMessage(error));
     // Only happens if "Confirm email" gets switched back on in Supabase.
     if (!data.session) Alert.alert('Almost there', 'Check your email to confirm your account, then sign in.');
   };

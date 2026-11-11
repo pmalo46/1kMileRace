@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import Storage from 'expo-sqlite/kv-store';
 
+import { forgetSharedRequests } from './races';
+
 /**
  * First-run state, kept on the phone: whether the intro and the Home tour have been seen,
  * and an invite link that arrived before its owner had an account.
@@ -71,6 +73,7 @@ export function inviteLink(code: string): string {
 /** Leaves the join or create screen; the first time, by way of the notifications ask. */
 export function afterJoining() {
   clearPendingInvite();
+  forgetSharedRequests();
   if (pushAsked()) router.back();
   else router.replace('/nudges');
 }

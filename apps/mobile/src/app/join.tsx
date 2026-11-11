@@ -10,7 +10,7 @@ import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { savedASpot, useInvitePreview } from '@/lib/invites';
 import { afterJoining, clearPendingInvite, formatInviteCode, normalizeInviteCode } from '@/lib/onboarding';
-import { supabase } from '@/lib/supabase';
+import { errorMessage, supabase } from '@/lib/supabase';
 import { Space } from '@/theme/tokens';
 
 /** Join by invite code, typed in or carried by an invite link (`?code=`). */
@@ -30,7 +30,7 @@ export default function Join() {
     setBusy(true);
     const { error } = await supabase.rpc('join_race', { p_invite_code: normalized });
     setBusy(false);
-    if (error) return Alert.alert('Couldn’t join', error.message);
+    if (error) return Alert.alert('Couldn’t join', errorMessage(error));
     afterJoining();
   };
 
