@@ -1,15 +1,18 @@
-import {
-  ActivityInput,
-  DEFAULT_RACE_RULES,
-  SECONDS_PER_DAY,
-  activityFromHealthSession,
-  evaluateActivity,
-  type ImportedActivity,
-} from '@1k/core';
+import { activityFromHealthSession } from '@1k/core';
 import { Platform } from 'react-native';
 
-import { LogError, logActivity } from './activities';
+import {
+  emptySync,
+  handledStore,
+  importWorkout,
+  syncWindowStart,
+  type HealthStatus,
+  type HealthSync,
+  type SeenWorkout,
+} from './health-import';
 import { inExpoGo } from './runtime';
+
+export type { HealthStatus, HealthSync, SeenWorkout, WorkoutOutcome } from './health-import';
 
 /**
  * Importing runs and walks recorded by a watch or another fitness app, through Android's
@@ -36,15 +39,6 @@ const READS = [
   { accessType: 'read', recordType: 'ExerciseSession' },
   { accessType: 'read', recordType: 'Distance' },
 ] as const;
-
-export type HealthStatus =
-  /** This build or phone can't use Health Connect at all. */
-  | 'unsupported'
-  /** Health Connect needs installing or updating from the Play Store. */
-  | 'needs-install'
-  /** Available, but the runner hasn't allowed 1K Miles to read workouts. */
-  | 'not-connected'
-  | 'connected';
 
 async function hasAccess(hc: HealthConnect): Promise<boolean> {
   const granted = await hc.getGrantedPermissions();
@@ -79,52 +73,11 @@ export function openHealthSettings() {
   HC?.openHealthConnectSettings();
 }
 
-// --- Remembering what's been dealt with -----------------------------------------------
-
-/**
- * Workouts already decided on, by Health Connect record id, so each is sent to the server
- * once. Kept on the phone; entries outlive the window workouts can be logged in.
- */
-// v2: earlier builds also remembered workouts the phone turned away, which hid them for good.
-const HANDLED_KEY = 'health-connect:handled:v2';
-const KEEP_HANDLED_MS = 30 * SECONDS_PER_DAY * 1000;
-
-function loadHandled(): Record<string, number> {
-  try {
-    const all = JSON.parse(localStorage.getItem(HANDLED_KEY) ?? '{}') as Record<string, number>;
-    const cutoff = Date.now() - KEEP_HANDLED_MS;
-    return Object.fromEntries(Object.entries(all).filter(([, at]) => at > cutoff));
-  } catch {
-    return {};
-  }
-}
+// Workouts already decided on. v2: earlier builds also remembered workouts the phone turned
+// away, which hid them for good.
+const handled = handledStore('health-connect:handled:v2');
 
 // --- Importing -------------------------------------------------------------------------
-
-/** What became of one workout Health Connect shared. */
-export type WorkoutOutcome =
-  | 'imported'
-  | 'already-logged'
-  /** Imported or turned away on an earlier check. */
-  | 'seen-before'
-  | 'not-run-or-walk'
-  /** Typed into another app by hand, not recorded by it. */
-  | 'hand-entered'
-  | 'no-distance'
-  | 'not-counted'
-  | 'failed';
-
-/** One workout as Health Connect reported it, for showing the runner what was found. */
-export interface SeenWorkout {
-  id: string;
-  /** The app that recorded it, by name where it's a well-known one. */
-  app: string;
-  startedAt: string;
-  distanceM: number;
-  outcome: WorkoutOutcome;
-  /** Why the rules turned it away, when they did. */
-  reason?: string;
-}
 
 const APP_NAMES: Record<string, string> = {
   'com.google.android.apps.fitness': 'Google Fit',
@@ -134,19 +87,6 @@ const APP_NAMES: Record<string, string> = {
   'com.strava': 'Strava',
   'com.google.android.apps.healthdata': 'Health Connect',
 };
-
-export interface HealthSync {
-  /** Every workout Health Connect shared from the last week, newest first. */
-  seen: SeenWorkout[];
-  /** Runs and walks that now count, newest last. */
-  imported: ImportedActivity[];
-  /** Already logged, for example the same run was also recorded in the app. */
-  alreadyLogged: number;
-  /** Found, but the race rules turned them away (most often: under a mile). */
-  notCounted: number;
-  /** Couldn't reach the server; they'll be tried again next time. */
-  failed: number;
-}
 
 let syncing: Promise<HealthSync> | null = null;
 
@@ -164,18 +104,18 @@ export function syncHealth(userId: string, toFinishM?: number): Promise<HealthSy
 }
 
 async function readAndLog(userId: string, toFinishM?: number): Promise<HealthSync> {
-  const summary: HealthSync = { seen: [], imported: [], alreadyLogged: 0, notCounted: 0, failed: 0 };
+  const summary = emptySync();
   const hc = HC;
   if (!hc || (await healthStatus()) !== 'connected') return summary;
 
   const now = new Date();
-  const since = new Date(now.getTime() - DEFAULT_RACE_RULES.lateLogDays * SECONDS_PER_DAY * 1000);
+  const since = syncWindowStart(now);
   const { records } = await hc.readRecords('ExerciseSession', {
     timeRangeFilter: { operator: 'between', startTime: since.toISOString(), endTime: now.toISOString() },
     ascendingOrder: true,
   });
 
-  const handled = loadHandled();
+  const done = handled.load();
   for (const record of records) {
     const id = record.metadata?.id;
     const origin = record.metadata?.dataOrigin;
@@ -188,7 +128,7 @@ async function readAndLog(userId: string, toFinishM?: number): Promise<HealthSyn
       outcome: 'seen-before',
     };
     summary.seen.unshift(seen);
-    if (handled[id]) continue;
+    if (done[id]) continue;
     // Runs typed into another app by hand aren't imported: the import is for what a watch
     // or app actually recorded. A run entered by hand belongs in "Add a run by hand" here,
     // where it's marked for review like any other.
@@ -226,40 +166,8 @@ async function readAndLog(userId: string, toFinishM?: number): Promise<HealthSyn
       continue;
     }
 
-    // The rules run here first so a short walk doesn't cost a round trip. Nothing decided
-    // on the phone is remembered: the recording app may still be syncing the distance, so
-    // the workout gets another look next time.
-    const parsed = ActivityInput.safeParse(activity);
-    const verdict = parsed.success ? evaluateActivity(parsed.data, DEFAULT_RACE_RULES, now, { toFinishM }) : null;
-    if (!verdict || verdict.status === 'rejected') {
-      summary.notCounted++;
-      seen.outcome = activity.distanceM > 0 ? 'not-counted' : 'no-distance';
-      seen.reason = verdict?.issues.find((i) => i.severity === 'reject')?.message;
-      continue;
-    }
-
-    try {
-      await logActivity(userId, activity);
-      summary.imported.push(activity);
-      seen.outcome = 'imported';
-      handled[id] = Date.now();
-    } catch (e) {
-      if (e instanceof LogError && e.status === 409) {
-        summary.alreadyLogged++;
-        seen.outcome = 'already-logged';
-        handled[id] = Date.now();
-      } else if (e instanceof LogError && e.status === 422) {
-        summary.notCounted++;
-        seen.outcome = 'not-counted';
-        seen.reason = e.message;
-        handled[id] = Date.now();
-      } else {
-        summary.failed++;
-        seen.outcome = 'failed';
-      }
-    }
+    await importWorkout(activity, { userId, now, toFinishM, seen, summary, handled: done });
   }
-  // Added to what's stored now rather than replacing it, so nothing another sync noted is lost.
-  localStorage.setItem(HANDLED_KEY, JSON.stringify({ ...loadHandled(), ...handled }));
+  handled.save(done);
   return summary;
 }

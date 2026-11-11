@@ -1,7 +1,7 @@
 import { formatMiles } from '@1k/core';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Pressable, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -10,6 +10,7 @@ import { Text } from '@/components/text';
 import { useToFinishM } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
 import {
+  HEALTH_STORE_NAME,
   connectHealth,
   healthStatus,
   openHealthSettings,
@@ -17,8 +18,13 @@ import {
   type HealthStatus,
   type HealthSync,
   type WorkoutOutcome,
-} from '@/lib/health-connect';
+} from '@/lib/health';
 import { Space } from '@/theme/tokens';
+
+const INTRO =
+  Platform.OS === 'ios'
+    ? 'Bring in runs from your Apple Watch, Garmin, Strava and more through Apple Health.'
+    : 'Import runs from Garmin, Fitbit, Samsung Health and more via Health Connect.';
 
 const HEALTH_CONNECT_STORE = 'https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata';
 
@@ -65,12 +71,16 @@ export default function Health() {
         <Text variant="heading" size={28}>
           Watch sync
         </Text>
-        <Text variant="muted">Import runs from Garmin, Fitbit, Samsung Health and more via Health Connect.</Text>
+        <Text variant="muted">{INTRO}</Text>
 
         {status === 'unsupported' && (
           <Card>
             <Text variant="heading">Not available here</Text>
-            <Text variant="muted">Requires Android and Health Connect.</Text>
+            <Text variant="muted">
+              {Platform.OS === 'ios'
+                ? 'Apple Health needs the latest version of 1K Miles.'
+                : 'Requires Android and Health Connect.'}
+            </Text>
           </Card>
         )}
 
@@ -80,12 +90,17 @@ export default function Health() {
           </Card>
         )}
 
-        {status === 'not-connected' && <Text variant="muted">Reads workouts only. Never writes.</Text>}
+        {status === 'not-connected' && <Text variant="muted">Reads runs and walks only. Never writes.</Text>}
 
         {status === 'connected' && (
           <Card>
             <Text variant="label">Connected</Text>
             <Text variant="muted">Syncs the last week each time you open the app.</Text>
+            {Platform.OS === 'ios' && (
+              <Text variant="muted">
+                Nothing coming through? In Settings › Health › Data Access, check 1K Miles can read Workouts.
+              </Text>
+            )}
           </Card>
         )}
 
@@ -134,7 +149,7 @@ function SyncResult({ result }: { result: HealthSync }) {
       </Text>
       {failed > 0 && <Text variant="muted">{failed} failed, will retry</Text>}
       {seen.length === 0 ? (
-        <Text variant="muted">No workouts this week. Check your app shares with Health Connect.</Text>
+        <Text variant="muted">No workouts this week. Check your watch app shares with {HEALTH_STORE_NAME}.</Text>
       ) : (
         <>
           <Text variant="label" style={{ marginTop: Space.xs }}>

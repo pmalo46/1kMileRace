@@ -29,7 +29,7 @@ import { WeekStrip } from '@/components/week-strip';
 import { useActiveRace, useToFinishM } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
 import { greeting } from '@/lib/greeting';
-import { healthStatus, syncHealth } from '@/lib/health-connect';
+import { healthStatus, syncHealth } from '@/lib/health';
 import { useSinceLastLook } from '@/lib/last-look';
 import { useMyWeek } from '@/lib/momentum';
 import { formatInviteCode, inviteLink, markTourSeen, pendingInvite, tourSeen } from '@/lib/onboarding';
