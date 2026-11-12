@@ -306,6 +306,36 @@ describe("row level security", () => {
   });
 });
 
+describe("invite preview", () => {
+  const asAnon = async <T,>(sql: string, params: unknown[] = []) => {
+    await db.pg.exec("set role anon");
+    try {
+      return (await db.pg.query<T>(sql, params)).rows;
+    } finally {
+      await db.pg.exec("reset role");
+    }
+  };
+
+  it("shows a signed-out caller the race name, organizer, runner count and start, and nothing else", async () => {
+    const rows = await asAnon<Record<string, unknown>>(`select * from invite_preview($1)`, [` ${invite.toUpperCase()} `]);
+    expect(rows).toEqual([
+      { name: "Neighborhood 1K", organizer_name: "Organizer", member_count: 3, starts_at: new Date(RACE_START) },
+    ]);
+  });
+
+  it("hands out eight-letter codes that can't be read as a phone number, and accepts them typed as ABCD-EFGH", async () => {
+    expect(invite).toMatch(/^[a-hj-km-np-z]{8}$/);
+    const typed = `${invite.slice(0, 4).toUpperCase()}-${invite.slice(4).toUpperCase()}`;
+    await db.as(outsider, `select join_race($1)`, [typed]);
+    expect(await db.as(outsider, `select * from race_members where user_id = auth.uid()`)).toHaveLength(1);
+  });
+
+  it("returns nothing for a code that doesn't match a race", async () => {
+    expect(await asAnon(`select * from invite_preview('nope')`)).toEqual([]);
+    expect(await db.as(outsider, `select * from invite_preview('nope')`)).toEqual([]);
+  });
+});
+
 describe("push tokens", () => {
   const tokens = () => db.q<{ token: string; user_id: string }>(`select token, user_id from push_tokens order by token`);
 
@@ -357,6 +387,15 @@ describe("logging runs", () => {
     const id = res!.ingest_activity.id;
     const [ev] = await db.q<{ storage_path: string }>(`select storage_path from activity_evidence where activity_id = $1`, [id]);
     expect(ev!.storage_path).toBe(`${ann}/console.jpg`);
+    expect((await standing(ann))!.counted_distance_m).toBeCloseTo(3 * MILE);
+  });
+
+  it("keeps whether a run was timed, and counts untimed miles in full", async () => {
+    await ingest(ann, row({ source: "manual", environment: "outdoor", time_recorded: false, moving_time_s: 5400, elapsed_time_s: 5400 }));
+    await ingest(bo, row({ source: "manual", environment: "outdoor" }));
+    const rows = await db.q<{ user_id: string; time_recorded: boolean }>(`select user_id, time_recorded from activities`);
+    expect(rows.find((r) => r.user_id === ann)!.time_recorded).toBe(false);
+    expect(rows.find((r) => r.user_id === bo)!.time_recorded).toBe(true);
     expect((await standing(ann))!.counted_distance_m).toBeCloseTo(3 * MILE);
   });
 

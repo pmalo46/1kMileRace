@@ -16,8 +16,9 @@ function story(item: FeedItem): { headline: string; detail?: string } {
     return {
       headline: `${a.type === 'walk' ? 'walked' : 'ran'} ${miles} ${miles === '1.0' ? 'mile' : 'miles'}`,
       detail: [
-        formatDuration(a.moving_time_s),
-        `${formatPace(paceSecondsPerMile(a.distance_m, a.moving_time_s))} /mi`,
+        ...(a.time_recorded === false
+          ? ['Time not recorded']
+          : [formatDuration(a.moving_time_s), `${formatPace(paceSecondsPerMile(a.distance_m, a.moving_time_s))} /mi`]),
         a.environment === 'treadmill' ? 'Treadmill' : null,
       ]
         .filter(Boolean)

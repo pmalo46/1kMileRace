@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -6,7 +5,8 @@ import { Button } from '@/components/button';
 import { Field } from '@/components/field';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
-import { supabase } from '@/lib/supabase';
+import { afterJoining } from '@/lib/onboarding';
+import { errorMessage, supabase } from '@/lib/supabase';
 
 function slugify(name: string): string {
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'race';
@@ -40,8 +40,8 @@ export default function CreateRace() {
       p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     setBusy(false);
-    if (error) return Alert.alert('Couldn’t create race', error.message);
-    router.back();
+    if (error) return Alert.alert('Couldn’t create race', errorMessage(error));
+    afterJoining();
   };
 
   return (

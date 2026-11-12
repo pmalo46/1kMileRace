@@ -85,6 +85,14 @@
             "minSdkVersion": 26
           }
         }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "1K Miles reads your runs and walks from Apple Health so the miles your watch records count in the race.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
       ]
     ],
     "experiments": {

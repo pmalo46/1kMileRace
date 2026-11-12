@@ -6,7 +6,7 @@ import { supabase } from './supabase';
 
 /** What the app sends for a run (ActivityInput in @1k/core); dates go over the wire as ISO strings. */
 export interface ActivityDraft {
-  source: 'app_gps' | 'manual' | 'treadmill_manual' | 'health_connect';
+  source: 'app_gps' | 'manual' | 'treadmill_manual' | 'health_connect' | 'healthkit';
   /** The recording's or health record's own id, so a retried upload can't double count. */
   sourceExternalId?: string;
   type: 'run' | 'walk';
@@ -24,6 +24,8 @@ export interface ActivityDraft {
   paceDetail?: PaceDetail;
   evidenceCount: number;
   evidenceTakenAt?: string;
+  /** Only ever false (miles typed in without a time); left out for every timed run. */
+  timeRecorded?: false;
 }
 
 /** A failed save, with the edge function's HTTP status when there was one (409 = already logged). */

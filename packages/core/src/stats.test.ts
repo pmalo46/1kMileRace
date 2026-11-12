@@ -32,6 +32,26 @@ describe("run or walk", () => {
   });
 });
 
+describe("untimed runs", () => {
+  it("count toward distance and run vs walk by type, but stay out of time and pace", () => {
+    const timedRun = act(now, 3, 10);
+    const untimedRun = act(now, 2, 30, { timed: false, type: "run" });
+    const untimedWalk = act(now, 1, 30, { timed: false, type: "walk" });
+    const s = raceStats([timedRun, untimedRun, untimedWalk], race, now);
+    expect(s.distanceM).toBeCloseTo(milesToMeters(6));
+    expect(s.movingTimeS).toBe(30 * 60);
+    expect(s.avgPaceS).toBeCloseTo(600);
+    expect(s.gait.run.count).toBe(2);
+    expect(s.gait.walk.count).toBe(1);
+    expect(s.gait.run.paceS).toBeCloseTo(600);
+    expect(s.gait.walk.paceS).toBeNull();
+    expect(s.gait.runShare).toBeCloseTo(5 / 6);
+    expect(s.fastest!.distanceM).toBeCloseTo(milesToMeters(3));
+    expect(s.weeks.at(-1)!.distanceM).toBeCloseTo(milesToMeters(6));
+    expect(s.weeks.at(-1)!.movingTimeS).toBe(30 * 60);
+  });
+});
+
 describe("weeks", () => {
   it("numbers Monday weeks from the race start and puts Sunday night in the week before", () => {
     const s = raceStats([act(new Date(2026, 9, 18, 23), 5, 10), act(new Date(2026, 9, 19, 6), 3, 10)], race, now);

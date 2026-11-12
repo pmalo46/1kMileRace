@@ -1,0 +1,10 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // Tappable invite links: https://<this worker>/join/<code> opens the app at that race.
+  "name": "onekmiles-invite",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true }
+  // SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are secrets (wrangler secret put), and
+  // .dev.vars locally, so they stay out of git like apps/mobile/.env.
+}

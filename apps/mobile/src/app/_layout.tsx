@@ -32,6 +32,7 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="sign-in" />
+          <Stack.Screen name="intro" options={{ gestureEnabled: false }} />
         </Stack.Protected>
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="(app)" />
@@ -41,6 +42,8 @@ function RootNavigator() {
           <Stack.Screen name="log-run" options={{ presentation: 'modal' }} />
           <Stack.Screen name="comments" options={{ presentation: 'modal' }} />
           <Stack.Screen name="health" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="rules" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="nudges" options={{ presentation: 'modal' }} />
           <Stack.Screen name="record" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         </Stack.Protected>
       </Stack>
