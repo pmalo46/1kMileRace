@@ -97,6 +97,12 @@ export function introSlides(): IntroSlide[] {
       ],
     },
     {
+      art: 'intro-rules',
+      heading: 'The rules.',
+      body: [],
+      rules: introRules(),
+    },
+    {
       art: 'intro-watch',
       heading: 'Track it as you go.',
       body: [
@@ -107,12 +113,6 @@ export function introSlides(): IntroSlide[] {
         ],
         [{ text: 'Wearing a watch? Sync it from Apple Health or Health Connect. Forgot? Add it by hand.' }],
       ],
-    },
-    {
-      art: 'intro-rules',
-      heading: 'The rules.',
-      body: [],
-      rules: introRules(),
     },
     {
       art: 'intro-medals',
