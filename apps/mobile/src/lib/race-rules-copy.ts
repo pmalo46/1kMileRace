@@ -100,7 +100,11 @@ export function introSlides(): IntroSlide[] {
       art: 'intro-watch',
       heading: 'Track it as you go.',
       body: [
-        [{ text: 'Tap ' }, { text: 'Start a run', strong: true }, { text: ' and the app measures every mile for you.' }],
+        [
+          { text: 'Tap ' },
+          { text: 'Start a run', strong: true },
+          { text: ' and the app measures every mile for you.' },
+        ],
         [{ text: 'Wearing a watch? Sync it from Apple Health or Health Connect. Forgot? Add it by hand.' }],
       ],
     },
@@ -112,14 +116,22 @@ export function introSlides(): IntroSlide[] {
     },
     {
       art: 'intro-medals',
-      heading: 'Two ways to win.',
+      heading: 'Everyone who finishes wins.',
       body: [
-        [{ text: `First to ${n(x.goalMiles)}`, strong: true }, { text: ` goes to the first person to finish all ${n(x.goalMiles)} miles.` }],
+        [
+          {
+            text: `Get to ${n(x.goalMiles)} miles and you've won. Your finish goes up for the whole group, and we'll all be there to cheer it.`,
+          },
+        ],
+        [{ text: 'Two titles are up for grabs, too:' }],
+        [
+          { text: `First to ${n(x.goalMiles)}`, strong: true },
+          { text: ` goes to the first person to finish all ${n(x.goalMiles)} miles.` },
+        ],
         [
           { text: `Fastest ${n(x.goalMiles)}`, strong: true },
           { text: ` goes to the person who crosses ${n(x.goalMiles)} miles with the lowest total moving time.` },
         ],
-        [{ text: "The finish line isn't for two people, though. It's for everyone who gets there." }],
       ],
     },
   ];
@@ -175,7 +187,7 @@ export function ruleSections(race?: { goal_m: number; starts_at: string; ends_at
       heading: 'Logging',
       lines: [
         `Log each run within ${x.lateLogDays} days of finishing it. Anything older can't be added.`,
-        "Didn't time a run? Turn on \"I didn't time it\" when you add it. The miles count in full.",
+        'Didn\'t time a run? Turn on "I didn\'t time it" when you add it. The miles count in full.',
       ],
     },
     {
@@ -186,29 +198,30 @@ export function ruleSections(race?: { goal_m: number; starts_at: string; ends_at
       ],
     },
     {
-      heading: 'Two ways to win',
+      heading: 'Winning',
       lines: [
+        `Everyone who finishes ${goal} miles wins. Every finish goes up on the feed for the whole group to celebrate.`,
+        'Two titles are up for grabs on top of that:',
         `First to ${goal}: the first person to finish all ${goal} miles. It goes by when the miles were run, not when they were uploaded, so syncing late never costs you.`,
         `Fastest ${goal}: the person who crosses ${goal} miles with the lowest total moving time. Moving time leaves out pauses and stops.`,
         `Your clock stops the moment you cross ${goal} miles, partway through a run if that's where it happens.`,
         `Untimed runs count toward Fastest ${goal} at ${formatPace(rules.slowestPaceSecPerMile)} a mile, the slowest pace the race allows, so leaving the time out never helps.`,
         `Miles past ${goal} are still saved, but the race is decided at ${goal}.`,
-        "The finish line isn't for two people, though. Everyone who gets there finished the race.",
       ],
     },
     {
       heading: 'Reviews',
       lines: [
         `A run faster than ${formatPace(rules.fastestPaceSecPerMile)} or slower than ${formatPace(rules.slowestPaceSecPerMile)} a mile, one that was stopped for more than ${Math.round((1 - rules.minMovingRatio) * 100)}% of the time, or one added by hand gets a second look from the organizer.`,
-        "It counts while it waits. If the organizer turns it down, its miles come off your total, along with any milestones it earned.",
+        'It counts while it waits. If the organizer turns it down, its miles come off your total, along with any milestones it earned.',
         'Runs recorded with fake GPS are turned away.',
-        "None of it is an accusation. It keeps the race honest for everybody.",
+        'None of it is an accusation. It keeps the race honest for everybody.',
       ],
     },
     {
       heading: 'Streaks and milestones',
       lines: [
-        'Day streak: days in a row with a run or walk. Week streak: weeks in a row where you hit that week\'s on-pace miles.',
+        "Day streak: days in a row with a run or walk. Week streak: weeks in a row where you hit that week's on-pace miles.",
         `Milestones run from mile 1 to mile ${goal}, and the whole group sees every one.`,
       ],
     },
