@@ -114,8 +114,11 @@ export function introSlides(): IntroSlide[] {
       art: 'intro-medals',
       heading: 'Two ways to win.',
       body: [
-        [{ text: `First to ${n(x.goalMiles)}`, strong: true }, { text: ' goes by when you ran it, not when you synced it.' }],
-        [{ text: `Fastest ${n(x.goalMiles)}`, strong: true }, { text: ' goes by time spent moving.' }],
+        [{ text: `First to ${n(x.goalMiles)}`, strong: true }, { text: ` goes to the first person to finish all ${n(x.goalMiles)} miles.` }],
+        [
+          { text: `Fastest ${n(x.goalMiles)}`, strong: true },
+          { text: ` goes to the person who crosses ${n(x.goalMiles)} miles with the lowest total moving time.` },
+        ],
         [{ text: "The finish line isn't for two people, though. It's for everyone who gets there." }],
       ],
     },
@@ -136,57 +139,84 @@ export function ruleSections(race?: { goal_m: number; starts_at: string; ends_at
   const by = race
     ? `by ${new Date(race.ends_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}`
     : `in ${x.days} days`;
+  const goal = n(x.goalMiles);
   return [
     {
       heading: 'The goal',
-      lines: [`${n(x.goalMiles)} miles ${by}. About ${x.perWeek} a week keeps you on pace.`],
+      lines: [
+        `Run or walk ${goal} miles ${by}. Every runner in the race chases their own ${goal}.`,
+        `About ${x.perWeek} miles a week, or ${x.perDay} a day, keeps you on pace to finish on time.`,
+        `Only miles from inside the race window count: from the start date until the race ends.`,
+      ],
     },
     {
       heading: 'What counts',
       lines: [
-        "Dedicated runs and walks only. Steps from errands, work or a game don't count.",
-        `Each run or walk has to be at least ${aMile(x.minMiles)} to count toward the race.`,
+        'Dedicated runs and walks only: you went out to run or walk, and that was the point.',
+        "Steps from errands, work, chasing kids, or playing a game or sport don't count, even if your watch logged them.",
+        `Each run or walk has to be at least ${aMile(x.minMiles)} to count toward the race. The one exception is your last run: whatever distance finishes your ${goal} counts.`,
         'A mile walked counts the same as a mile run.',
+        rules.allowTreadmill ? 'Treadmill miles count.' : "Treadmill miles don't count in this race.",
       ],
     },
     {
       heading: 'Tracking your miles',
       lines: [
-        'Best: record it in the app. GPS measures the route, and the run counts right away.',
-        'Watch runs sync from Apple Health or Health Connect.',
-        'Runs typed in by hand count too, but the organizer takes a second look.',
-        rules.requireTreadmillPhoto ? 'Treadmill runs typed in by hand need a photo of the screen.' : '',
+        'Best: tap Start a run and record it in the app. GPS measures the route, and the run counts right away.',
+        'Watch runs and walks sync from Apple Health (iPhone) or Health Connect (Android): the app checks the last week each time you open it. Workouts typed into those apps by hand are skipped; add those here instead.',
+        'Runs added by hand count too, but the organizer takes a second look.',
+        rules.requireTreadmillPhoto
+          ? 'Treadmill runs added by hand need a photo of the treadmill screen showing distance and time, taken around the time of the run. Only organizers see it. A treadmill run recorded by a watch needs no photo.'
+          : '',
+        'The same run recorded twice, say in the app and on your watch, counts once. The app keeps the best-measured copy.',
       ].filter(Boolean),
     },
     {
-      heading: 'Running or walking',
-      lines: [`Slower than ${formatPace(WALK_PACE_S_PER_MI)} a mile counts as walking. Both count toward your ${n(x.goalMiles)}.`],
+      heading: 'Logging',
+      lines: [
+        `Log each run within ${x.lateLogDays} days of finishing it. Anything older can't be added.`,
+        "Didn't time a run? Turn on \"I didn't time it\" when you add it. The miles count in full.",
+      ],
     },
     {
-      heading: 'Winning',
+      heading: 'Running or walking',
       lines: [
-        `First to ${n(x.goalMiles)}, by when you ran it. Fastest ${n(x.goalMiles)}, by moving time.`,
-        'Your clock stops the moment you cross the line.',
-        `Didn't time a run? The miles still count. For Fastest ${n(x.goalMiles)}, it's timed at ${formatPace(rules.slowestPaceSecPerMile)} a mile, the slowest pace the race allows.`,
+        `Slower than ${formatPace(WALK_PACE_S_PER_MI)} a mile counts as walking, faster counts as running. Both count toward your ${goal}.`,
+        'Runs recorded in the app measure running and walking as you go, so a run with walk breaks shows both.',
+      ],
+    },
+    {
+      heading: 'Two ways to win',
+      lines: [
+        `First to ${goal}: the first person to finish all ${goal} miles. It goes by when the miles were run, not when they were uploaded, so syncing late never costs you.`,
+        `Fastest ${goal}: the person who crosses ${goal} miles with the lowest total moving time. Moving time leaves out pauses and stops.`,
+        `Your clock stops the moment you cross ${goal} miles, partway through a run if that's where it happens.`,
+        `Untimed runs count toward Fastest ${goal} at ${formatPace(rules.slowestPaceSecPerMile)} a mile, the slowest pace the race allows, so leaving the time out never helps.`,
+        `Miles past ${goal} are still saved, but the race is decided at ${goal}.`,
+        "The finish line isn't for two people, though. Everyone who gets there finished the race.",
       ],
     },
     {
       heading: 'Reviews',
       lines: [
-        `Faster than ${formatPace(rules.fastestPaceSecPerMile)} or slower than ${formatPace(rules.slowestPaceSecPerMile)} a mile gets a second look from the organizer.`,
-        "It isn't an accusation. It keeps the race honest.",
+        `A run faster than ${formatPace(rules.fastestPaceSecPerMile)} or slower than ${formatPace(rules.slowestPaceSecPerMile)} a mile, one that was stopped for more than ${Math.round((1 - rules.minMovingRatio) * 100)}% of the time, or one added by hand gets a second look from the organizer.`,
+        "It counts while it waits. If the organizer turns it down, its miles come off your total, along with any milestones it earned.",
+        'Runs recorded with fake GPS are turned away.',
+        "None of it is an accusation. It keeps the race honest for everybody.",
       ],
     },
     {
       heading: 'Streaks and milestones',
       lines: [
-        'Days in a row with a run. Weeks on pace.',
-        `Milestones from mile 1 to mile ${n(x.goalMiles)}, and the group sees every one.`,
+        'Day streak: days in a row with a run or walk. Week streak: weeks in a row where you hit that week\'s on-pace miles.',
+        `Milestones run from mile 1 to mile ${goal}, and the whole group sees every one.`,
       ],
     },
     {
-      heading: 'Logging',
-      lines: [`Log each run within ${x.lateLogDays} days of finishing it.`],
+      heading: 'Cheering',
+      lines: [
+        "Cheer on the feed, comment, and check in on whoever's gone quiet. Getting everyone to the finish is the point.",
+      ],
     },
   ];
 }

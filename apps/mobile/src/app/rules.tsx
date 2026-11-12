@@ -9,7 +9,7 @@ import { useActiveRace } from '@/lib/active-race';
 import { ruleSections } from '@/lib/race-rules-copy';
 import { Space } from '@/theme/tokens';
 
-/** The whole rulebook, short enough to read standing up. Uses the active race's own dates. */
+/** The full rulebook. Uses the active race's own goal and dates. */
 export default function Rules() {
   const { race } = useActiveRace();
   const sections = ruleSections(race);
@@ -20,6 +20,7 @@ export default function Rules() {
         <Text variant="heading" size={28}>
           How the race works
         </Text>
+        <Text variant="muted">The full rules. Same for everyone in the race.</Text>
       </View>
       {sections.map((section) => (
         <Card key={section.heading}>

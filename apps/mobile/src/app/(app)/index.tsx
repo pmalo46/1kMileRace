@@ -266,6 +266,16 @@ export default function Home() {
         />
       </Pressable>
 
+      <Pressable
+        onPress={() => router.push('/rules')}
+        accessibilityRole="link"
+        hitSlop={8}
+        style={{ alignSelf: 'center', paddingVertical: Space.sm }}>
+        <Text variant="muted" style={{ fontWeight: '700' }}>
+          Read the full race rules ›
+        </Text>
+      </Pressable>
+
       <Quote quote={quoteOfTheDay()} />
     </Screen>
   );
