@@ -78,7 +78,7 @@ export default function Health() {
             <Text variant="heading">Not available here</Text>
             <Text variant="muted">
               {Platform.OS === 'ios'
-                ? 'Apple Health needs the latest version of 1K Miles.'
+                ? 'Apple Health needs the latest version of 1K Mile Race.'
                 : 'Requires Android and Health Connect.'}
             </Text>
           </Card>
@@ -98,7 +98,7 @@ export default function Health() {
             <Text variant="muted">Syncs the last week each time you open the app.</Text>
             {Platform.OS === 'ios' && (
               <Text variant="muted">
-                Nothing coming through? In Settings › Health › Data Access, check 1K Miles can read Workouts.
+                Nothing coming through? In Settings › Health › Data Access, check 1K Mile Race can read Workouts.
               </Text>
             )}
           </Card>

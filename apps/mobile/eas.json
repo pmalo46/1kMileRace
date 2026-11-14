@@ -11,6 +11,13 @@
         "buildType": "apk"
       }
     },
+    "development-simulator": {
+      "extends": "development",
+      "ios": {
+        "simulator": true
+      },
+      "environment": "preview"
+    },
     "preview": {
       "distribution": "internal",
       "android": {
@@ -19,7 +26,8 @@
       "environment": "preview"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "environment": "production"
     }
   },
   "submit": {

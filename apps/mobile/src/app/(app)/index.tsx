@@ -120,7 +120,7 @@ export default function Home() {
 
   const invite = () =>
     Share.share({
-      message: `I'm running ${goalMiles.toLocaleString()} miles this year. Come with me: ${race.name} on 1K Miles.\n${inviteLink(race.invite_code)}\nOr use the code ${formatInviteCode(race.invite_code)}`,
+      message: `I'm running ${goalMiles.toLocaleString()} miles this year. Come with me: ${race.name} on 1K Mile Race.\n${inviteLink(race.invite_code)}\nOr use the code ${formatInviteCode(race.invite_code)}`,
     }).catch(() => undefined);
 
   return (

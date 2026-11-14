@@ -1,4 +1,4 @@
-# 1K Miles art brief: the race packet
+# 1K Mile Race art brief: the race packet
 
 ## The idea
 Joining a race should feel like picking up your packet the night before a big run. You open the envelope and spread it out on the table: your bib, the safety pins, a card with the rules, the medal you're going to earn. Every illustration in the app is one of those objects.

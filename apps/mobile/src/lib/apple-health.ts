@@ -14,7 +14,7 @@ import { inExpoGo } from './runtime';
 
 /**
  * Importing runs and walks from Apple Health, where the Apple Watch, Garmin, Strava, Nike
- * Run Club and others save their workouts. Read only: 1K Miles never writes to Health.
+ * Run Club and others save their workouts. Read only: 1K Mile Race never writes to Health.
  *
  * The library is native and loaded defensively: in Expo Go, on Android, or in an iOS build
  * made before it was added, importing is simply unavailable.

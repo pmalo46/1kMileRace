@@ -66,7 +66,7 @@ function invite(code: string, p: Preview | null): string {
     <p class="label">${esc(p.name)}</p>
     <h1>${esc(p.organizer_name)} saved you a spot.</h1>
     <p>1,000 miles in 365 days, run or walked. ${esc(people)} ${esc(startLine)}</p>
-    <a class="button" href="${esc(appLink)}">Open 1K Miles</a>
+    <a class="button" href="${esc(appLink)}">Open 1K Mile Race</a>
     <div class="bib">
       <span class="label">Your code</span>
       <span class="code">${esc(display(code))}</span>
@@ -88,7 +88,7 @@ function page(body: string, status: number): Response {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <meta name="format-detection" content="telephone=no">
-<title>1K Miles invite</title>
+<title>1K Mile Race invite</title>
 <style>
   :root { --bg:#FFF8F1; --surface:#fff; --text:#1C1433; --muted:#6E6584; --border:#EFE2D6; }
   @media (prefers-color-scheme: dark) { :root { --bg:#120D1F; --surface:#1D1630; --text:#FFF6EC; --muted:#B3A8C9; --border:#2F2648; } }

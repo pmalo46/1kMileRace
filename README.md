@@ -1,4 +1,4 @@
-# 1K Miles
+# 1K Mile Race
 
 A year-long social race: run or walk 1,000 cumulative miles in 365 days, and help as many people as possible cross the finish line.
 
@@ -54,7 +54,7 @@ npx eas-cli@latest init                # first time only: links the app to your 
 npx eas-cli@latest build --profile development --platform android
 ```
 
-Install the APK it produces on your phone, then `npx expo start` and open the 1K Miles app (press `s` in the terminal to switch between the development build and Expo Go).
+Install the APK it produces on your phone, then `npx expo start` and open the 1K Mile Race app (press `s` in the terminal to switch between the development build and Expo Go).
 
 ### Push notifications
 
