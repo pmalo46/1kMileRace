@@ -128,10 +128,11 @@ function ReviewQueue({
   if (runs.length === 0) {
     return (
       <Card>
-        <Text variant="heading">Nothing waiting.</Text>
+        <Text variant="heading">All clear.</Text>
         <Text variant="muted">
-          Runs land here when they could be miles nobody ran: too fast for feet, longer than the route, a treadmill
-          photo from another time, or {LONG_MILES}+ miles added by hand. You&apos;ll get a notification when one does.
+          You&apos;ll get a notification when a run needs a look. That&apos;s any run that&apos;s unusually fast,
+          longer than its GPS route, {LONG_MILES} miles or more added by hand, or on a treadmill with a photo from a
+          different time.
         </Text>
       </Card>
     );
@@ -139,8 +140,7 @@ function ReviewQueue({
   return (
     <View style={{ gap: Space.md }}>
       <Text variant="muted">
-        These runs count while they wait. Count it keeps them; Don&apos;t count it takes the miles back off and tells
-        the runner why.
+        These runs already count. If one doesn&apos;t look right, tap Don&apos;t count it and tell the runner why.
       </Text>
       {runs.map((run) => (
         <ReviewCard key={run.activity_id} raceId={raceId} run={run} onDone={onChanged} />
@@ -199,7 +199,7 @@ function ReviewCard({ raceId, run, onDone }: { raceId: string; run: PendingRun; 
       </Text>
       <Text variant="muted">
         {HOW[trackingMethodOf(run.source)]}
-        {run.time_recorded ? ` · ${formatDuration(run.moving_time_s)}` : ' · Time not recorded'}
+        {run.time_recorded ? ` · ${formatDuration(run.moving_time_s)}` : ' · Not timed'}
         {run.usual_pace_s != null ? ` · Usually ${formatPace(run.usual_pace_s)} /mi` : ''}
       </Text>
       <Text style={{ fontWeight: '700' }}>{reviewReason(run.flags)}</Text>
@@ -216,7 +216,7 @@ function ReviewCard({ raceId, run, onDone }: { raceId: string; run: PendingRun; 
           <TextInput
             value={note}
             onChangeText={setNote}
-            placeholder="Why it doesn't count (they'll see this)"
+            placeholder="Tell them why. They'll see this."
             placeholderTextColor={colors.textMuted}
             maxLength={500}
             multiline
@@ -259,7 +259,7 @@ function ReviewCard({ raceId, run, onDone }: { raceId: string; run: PendingRun; 
 
 const ROLE_LABEL: Record<Member['role'], string> = {
   organizer: 'Organizer',
-  marshal: 'Marshal: reviews runs',
+  marshal: 'Marshal',
   participant: 'Runner',
   supporter: 'Supporter',
 };
@@ -284,7 +284,7 @@ function Members({ raceId }: { raceId: string }) {
   const confirmRemove = (m: Member) =>
     Alert.alert(
       `Remove ${m.profile?.display_name ?? 'this runner'}?`,
-      'Their miles come off the leaderboard and they can’t rejoin with the invite code.',
+      'Their miles come off the leaderboard. They can’t rejoin with the invite code.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Remove', style: 'destructive', onPress: () => act(m.user_id, () => removeMember(raceId, m.user_id)) },
@@ -294,7 +294,7 @@ function Members({ raceId }: { raceId: string }) {
   return (
     <View style={{ gap: Space.sm }}>
       <Text variant="muted">
-        Marshals can review runs alongside you. Organizers can&apos;t be changed here, and neither can you.
+        Marshals can review runs. You can&apos;t change an organizer&apos;s role or your own.
       </Text>
       {members.map((m) => {
         const editable = m.user_id !== session?.user.id && (m.role === 'participant' || m.role === 'marshal');
@@ -378,7 +378,7 @@ function RaceSettings({
   const confirmReplace = () =>
     Alert.alert(
       'Replace the invite code?',
-      'Links and codes you’ve already shared stop working. Everyone already in stays in.',
+      'The old code and link stop working. Everyone already in the race stays in.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -397,14 +397,14 @@ function RaceSettings({
     run('announce', async () => {
       await postAnnouncement(raceId, announcement.trim());
       setAnnouncement('');
-      Alert.alert('Sent', 'Everyone in the race got it, and it’s pinned at the top of Feed and Chat.');
+      Alert.alert('Sent', 'Everyone got a notification, and it’s pinned at the top of Feed and Chat for 3 days.');
     });
 
   return (
     <View style={{ gap: Space.md }}>
       <Card>
         <Text variant="label">Announcement</Text>
-        <Text variant="muted">Pinned at the top of Feed and Chat, and sent to everyone in the race.</Text>
+        <Text variant="muted">Everyone gets a notification, and it stays pinned at the top of Feed and Chat for 3 days.</Text>
         <Field
           label="Message"
           value={announcement}
@@ -452,14 +452,13 @@ function RaceSettings({
           label="Description"
           value={description}
           onChangeText={setDescription}
-          placeholder="What this group is about, where you run, anything new people should know."
+          placeholder="Who's in it, where you run, anything new people should know."
           multiline
           maxLength={2000}
           style={{ minHeight: 88, textAlignVertical: 'top', paddingTop: Space.sm }}
         />
         <Text variant="muted" size={14}>
-          The start date and the 1,000-mile goal stay as the race was set up, so nobody&apos;s standing shifts under
-          them.
+          The start date and the mileage goal can&apos;t be changed once the race is set up.
         </Text>
         <Button title="Save" onPress={saveDetails} loading={busy === 'details'} disabled={!changed || !name.trim()} />
       </Card>

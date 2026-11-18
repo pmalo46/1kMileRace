@@ -15,7 +15,7 @@ export function AdminLink({ waiting, onPress }: { waiting: number; onPress: () =
         <View style={{ flex: 1 }}>
           <Text variant="label">Race admin</Text>
           <Text variant="heading" size={18}>
-            {waiting > 0 ? `${waiting} ${waiting === 1 ? 'run' : 'runs'} to review` : 'Nothing waiting on you'}
+            {waiting > 0 ? `${waiting} ${waiting === 1 ? 'run' : 'runs'} to review` : 'Nothing to review'}
           </Text>
         </View>
         <Text variant="muted" size={22} style={{ color: waiting > 0 ? colors.accent : colors.textMuted }}>

@@ -111,7 +111,13 @@ export function useMessages(raceId: string | undefined) {
   return { messages, hasOlder, loadOlder, refresh, send, remove };
 }
 
-/** The race's newest announcement, live, for pinning above the feed and the chat. */
+/** How long an announcement stays pinned. It's still in the chat after that. */
+export const ANNOUNCEMENT_PIN_MS = 3 * 86_400_000;
+
+const pinned = (m: Message | null) =>
+  m && Date.now() - new Date(m.created_at).getTime() < ANNOUNCEMENT_PIN_MS ? m : null;
+
+/** The race's newest announcement from the last 3 days, live, for pinning above the feed and the chat. */
 export function useLatestAnnouncement(raceId: string | undefined) {
   const [announcement, setAnnouncement] = useState<Message | null>(null);
   const refresh = useCallback(async () => {
@@ -121,6 +127,7 @@ export function useLatestAnnouncement(raceId: string | undefined) {
       .select(MESSAGE)
       .eq('race_id', raceId)
       .eq('kind', 'announcement')
+      .gte('created_at', new Date(Date.now() - ANNOUNCEMENT_PIN_MS).toISOString())
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -139,5 +146,6 @@ export function useLatestAnnouncement(raceId: string | undefined) {
       supabase.removeChannel(channel);
     };
   }, [raceId, refresh]);
-  return announcement;
+  // Checked on every render too, so it unpins in an app that's been open since it was posted.
+  return pinned(announcement);
 }
