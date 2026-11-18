@@ -1,7 +1,15 @@
-import { WALK_PACE_S_PER_MI, formatMiles, formatPace, metersToMiles, type RaceStats, type StatWeek } from '@1k/core';
+import {
+  WALK_PACE_S_PER_MI,
+  formatMiles,
+  formatPace,
+  metersToMiles,
+  type RaceStats,
+  type StatWeek,
+  type TrackingMethod,
+} from '@1k/core';
 import { View } from 'react-native';
 
-import { Space } from '@/theme/tokens';
+import { Radius, Space, Sunrise } from '@/theme/tokens';
 import { useTheme } from '@/theme/use-theme';
 
 import { Card } from './card';
@@ -276,6 +284,8 @@ export function RaceStatsView({
         <SplitBar left="outside" right="treadmill" share={stats.distanceM > 0 ? stats.outdoorM / stats.distanceM : 1} />
       </Card>
 
+      <Tracking stats={stats} />
+
       {/* Climbing: only in-app recordings measure it. */}
       {stats.climbM != null && ft > 0 && (
         <Card>
@@ -290,6 +300,61 @@ export function RaceStatsView({
         </Card>
       )}
     </View>
+  );
+}
+
+const TRACKING_LABELS: Record<TrackingMethod, string> = {
+  app: 'Recorded in the app',
+  watch: 'Synced from a watch',
+  treadmill: 'Treadmill, with a photo',
+  hand: 'Added by hand',
+};
+
+/**
+ * How the miles were measured, out in the open for everyone in the race. Most miles coming
+ * from the app or a watch is what makes the leaderboard worth trusting.
+ */
+function Tracking({ stats }: { stats: RaceStats }) {
+  const { colors } = useTheme();
+  if (stats.distanceM <= 0) return null;
+  // Told apart by lightness as well as hue: dark accent, mid teal, light grey, pale yellow.
+  const swatch: Record<TrackingMethod, string> = {
+    app: colors.accent,
+    watch: colors.onPace,
+    treadmill: colors.textMuted,
+    hand: Sunrise[2],
+  };
+  const shown = stats.tracking.filter((t) => t.count > 0);
+  const percent = Math.round(stats.measuredShare * 100);
+  return (
+    <Card>
+      <Text variant="label">How the miles were tracked</Text>
+      <Text variant="heading">{percent}% measured by the app or a watch</Text>
+      <View
+        style={{ flexDirection: 'row', height: 14, borderRadius: Radius.pill, overflow: 'hidden', backgroundColor: colors.track }}
+        accessibilityRole="image"
+        accessibilityLabel={shown
+          .map((t) => `${TRACKING_LABELS[t.method]}: ${formatMiles(t.distanceM)} miles`)
+          .join('. ')}>
+        {shown.map((t) => (
+          <View key={t.method} style={{ flex: t.distanceM, backgroundColor: swatch[t.method] }} />
+        ))}
+      </View>
+      <View style={{ gap: Space.xs }}>
+        {shown.map((t) => (
+          <View key={t.method} style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: swatch[t.method] }} />
+            <Text style={{ flex: 1 }}>{TRACKING_LABELS[t.method]}</Text>
+            <Text variant="muted">
+              {formatMiles(t.distanceM)} mi · {plural(t.count, 'run')}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Text variant="muted" size={14}>
+        Runs added by hand get a second look from the organizer.
+      </Text>
+    </Card>
   );
 }
 
