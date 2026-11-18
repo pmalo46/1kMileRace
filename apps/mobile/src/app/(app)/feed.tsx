@@ -18,6 +18,7 @@ import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
 import { useLatestAnnouncement } from '@/lib/chat';
+import { useTabBarGap } from '@/lib/tab-bar-gap';
 import { CHEER, CHEER_EMOJIS, byDay, postComment, timeAgo, useFeed } from '@/lib/feed';
 import type { FeedItem } from '@/lib/types';
 import { Radius, Space } from '@/theme/tokens';
@@ -52,6 +53,7 @@ export default function Feed() {
     if (params.tab === 'chat') setTab('chat');
   }, [params.tab]);
   const announcement = useLatestAnnouncement(race?.id);
+  const tabBarGap = useTabBarGap();
 
   const cheer = (item: FeedItem, emoji: string) => {
     if (!userId) return;
@@ -169,36 +171,38 @@ export default function Feed() {
           />
         )}
         {tab === 'activity' && replyTo && userId && (
-          <CommentComposer
-            key={replyTo.id}
-            autoFocus
-            header={
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: Space.md,
-                  paddingTop: Space.sm,
-                }}>
-                <Text variant="muted" size={14} style={{ flex: 1 }}>
-                  Commenting on{' '}
-                  <Text size={14} style={{ fontWeight: '800' }}>
-                    {replyTo.actor_id === userId ? 'your post' : `${replyTo.actor?.display_name ?? 'Runner'}'s post`}
+          <View style={{ paddingBottom: tabBarGap }}>
+            <CommentComposer
+              key={replyTo.id}
+              autoFocus
+              header={
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: Space.md,
+                    paddingTop: Space.sm,
+                  }}>
+                  <Text variant="muted" size={14} style={{ flex: 1 }}>
+                    Commenting on{' '}
+                    <Text size={14} style={{ fontWeight: '800' }}>
+                      {replyTo.actor_id === userId ? 'your post' : `${replyTo.actor?.display_name ?? 'Runner'}'s post`}
+                    </Text>
                   </Text>
-                </Text>
-                <Pressable onPress={() => setReplyTo(null)} accessibilityRole="button" hitSlop={12}>
-                  <Text variant="muted" size={14} style={{ fontWeight: '800' }}>
-                    Cancel
-                  </Text>
-                </Pressable>
-              </View>
-            }
-            onPost={async (body, gif) => {
-              await postComment(replyTo.id, userId, body, gif);
-              setReplyTo(null);
-              refresh();
-            }}
-          />
+                  <Pressable onPress={() => setReplyTo(null)} accessibilityRole="button" hitSlop={12}>
+                    <Text variant="muted" size={14} style={{ fontWeight: '800' }}>
+                      Cancel
+                    </Text>
+                  </Pressable>
+                </View>
+              }
+              onPost={async (body, gif) => {
+                await postComment(replyTo.id, userId, body, gif);
+                setReplyTo(null);
+                refresh();
+              }}
+            />
+          </View>
         )}
       </KeyboardAvoidingView>
       <EmojiPicker
@@ -276,7 +280,10 @@ function PostRow({
       <View style={{ marginLeft: INDENT, gap: Space.sm }}>
         {celebrating && item.payload.miles != null && <Quote quote={milestoneQuote(item.payload.miles)} size={16} />}
         {item.photoUrl && (
-          <Pressable onPress={() => openComments(item)} accessibilityRole="imagebutton" accessibilityLabel="Treadmill photo">
+          <Pressable
+            onPress={() => openComments(item)}
+            accessibilityRole="imagebutton"
+            accessibilityLabel="Treadmill photo">
             <Image
               source={{ uri: item.photoUrl }}
               style={{ width: 180, aspectRatio: 3 / 4, borderRadius: Radius.md, backgroundColor: colors.surfaceAlt }}

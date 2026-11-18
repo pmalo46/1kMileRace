@@ -132,16 +132,18 @@ export interface TurnedDown {
   note: string | null;
 }
 
-/** The signed-in runner's runs an organizer didn't count, newest first, with why. */
+/** The signed-in runner's runs a reviewer didn't count, newest first, with why. */
 export function useTurnedDown(userId: string | undefined) {
   const [runs, setRuns] = useState<TurnedDown[]>([]);
   const refresh = useCallback(async () => {
     if (!userId) return;
     const { data } = await supabase
       .from('activities')
-      .select('id, type, started_at, distance_m, reviews:activity_reviews(decision, note, created_at)')
+      // Only runs a reviewer turned down, not ones set aside some other way.
+      .select('id, type, started_at, distance_m, reviews:activity_reviews!inner(decision, note, created_at)')
       .eq('user_id', userId)
       .eq('verification', 'rejected')
+      .eq('reviews.decision', 'reject')
       .order('started_at', { ascending: false })
       .limit(10);
     type Row = Omit<TurnedDown, 'note'> & { reviews: { decision: string; note: string | null; created_at: string }[] };

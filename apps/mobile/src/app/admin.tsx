@@ -11,7 +11,8 @@ import {
 } from '@1k/core';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, Share, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, Share, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -66,11 +67,20 @@ export default function Admin() {
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <View style={{ gap: Space.xs }}>
-        <Text variant="label">{race.name}</Text>
-        <Text variant="heading" size={28}>
-          Race admin
-        </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <View style={{ gap: Space.xs, flex: 1 }}>
+          <Text variant="label">{race.name}</Text>
+          <Text variant="heading" size={28}>
+            Race admin
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          hitSlop={12}
+          style={{ paddingVertical: Space.sm }}>
+          <Text style={{ fontWeight: '800' }}>Done</Text>
+        </Pressable>
       </View>
       {organizer && (
         <Segmented
@@ -120,8 +130,8 @@ function ReviewQueue({
       <Card>
         <Text variant="heading">Nothing waiting.</Text>
         <Text variant="muted">
-          Runs land here when they could be miles nobody ran: too fast for feet, longer than the route, a treadmill photo
-          from another time, or {LONG_MILES}+ miles added by hand. You&apos;ll get a notification when one does.
+          Runs land here when they could be miles nobody ran: too fast for feet, longer than the route, a treadmill
+          photo from another time, or {LONG_MILES}+ miles added by hand. You&apos;ll get a notification when one does.
         </Text>
       </Card>
     );

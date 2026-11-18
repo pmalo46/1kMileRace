@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, FlatList, Pressable, View } from 'react-nativ
 import { useMembers } from '@/lib/admin';
 import { useMessages, type Message } from '@/lib/chat';
 import { timeAgo } from '@/lib/feed';
+import { useTabBarGap } from '@/lib/tab-bar-gap';
 import type { Race } from '@/lib/types';
 import { Radius, Space } from '@/theme/tokens';
 import { useTheme } from '@/theme/use-theme';
@@ -29,6 +30,7 @@ export function Chat({ race, userId }: { race: Race; userId: string }) {
     [members, userId],
   );
   const organizer = race.myRole === 'organizer';
+  const gap = useTabBarGap();
 
   const confirmDelete = (m: Message) =>
     Alert.alert(
@@ -79,12 +81,14 @@ export function Chat({ race, userId }: { race: Race; userId: string }) {
           )
         }
       />
-      <CommentComposer
-        placeholder="Message the race"
-        maxLength={2000}
-        mentionables={names}
-        onPost={(body, gif) => send(userId, body, gif)}
-      />
+      <View style={{ paddingBottom: gap }}>
+        <CommentComposer
+          placeholder="Message the race"
+          maxLength={2000}
+          mentionables={names}
+          onPost={(body, gif) => send(userId, body, gif)}
+        />
+      </View>
     </View>
   );
 }
