@@ -142,9 +142,9 @@ export default function Feed() {
                   paddingTop: Space.sm,
                 }}>
                 <Text variant="muted" size={14} style={{ flex: 1 }}>
-                  Replying to{' '}
+                  Commenting on{' '}
                   <Text size={14} style={{ fontWeight: '800' }}>
-                    {replyTo.actor_id === userId ? 'your post' : (replyTo.actor?.display_name ?? 'Runner')}
+                    {replyTo.actor_id === userId ? 'your post' : `${replyTo.actor?.display_name ?? 'Runner'}'s post`}
                   </Text>
                 </Text>
                 <Pressable onPress={() => setReplyTo(null)} accessibilityRole="button" hitSlop={12}>
@@ -252,7 +252,7 @@ function PostRow({ item, userId, time, replying, onReply, ...cheers }: RowProps 
             accessibilityState={{ selected: replying }}
             style={{ marginLeft: 'auto', minHeight: 36, justifyContent: 'center', paddingHorizontal: Space.xs }}>
             <Text size={14} style={{ fontWeight: '800', color: replying ? colors.accent : colors.textMuted }}>
-              Reply
+              Comment
             </Text>
           </Pressable>
         </View>

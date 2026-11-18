@@ -18,7 +18,7 @@ export function CommentComposer({
   /** Throws to keep the draft and say why it didn't post. */
   onPost: (body: string, gif: Gif | null) => Promise<void>;
   autoFocus?: boolean;
-  /** Shown above the box, e.g. who the reply is to. */
+  /** Shown above the box, e.g. whose post the comment is on. */
   header?: ReactNode;
 }) {
   const { colors } = useTheme();
