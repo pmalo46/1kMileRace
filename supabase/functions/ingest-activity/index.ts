@@ -14,6 +14,7 @@ import {
   overtakePush,
   overtakes,
   ownMilestonePush,
+  reviewNeededPush,
   planIngest,
   type StandingLike,
 } from "@1k/core";
@@ -170,6 +171,26 @@ Deno.serve(async (req) => {
     .from("race_activities")
     .select("race_id, counted_distance_m, race:races(name)")
     .eq("activity_id", saved.id);
+
+  // A run held for something unusual (or a treadmill photo to check) goes to the organizers
+  // and marshals of each race it counts in. Runs only flagged for being typed in by hand
+  // just add to the count in their review queue, so organizers aren't pinged for every one.
+  const unusual = plan.evaluation.issues.some((i) => i.code !== "manual_entry") || activity.source === "treadmill_manual";
+  if (plan.evaluation.status === "flagged" && unusual) {
+    for (const c of counted ?? []) {
+      const { data: reviewers } = await admin
+        .from("race_members")
+        .select("user_id")
+        .match({ race_id: c.race_id, status: "active" })
+        .in("role", ["organizer", "marshal"])
+        .neq("user_id", user.id);
+      await sendPush(
+        admin,
+        (reviewers ?? []).map((r) => r.user_id as string),
+        reviewNeededPush(runner, activity.type, activity.distanceM, plan.evaluation.issues),
+      );
+    }
+  }
 
   // Let anyone this run carried the runner past know, so they can cheer it (and lace up).
   if (fresh && boardsBefore.length > 0) {

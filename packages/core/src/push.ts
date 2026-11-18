@@ -79,3 +79,79 @@ export function overtakePush(
     url: feedItemId ? commentsUrl(feedItemId) : "/leaderboard",
   };
 }
+
+const clip = (text: string) => {
+  const flat = text.trim().replace(/\s+/g, " ");
+  return flat.length > BODY_LIMIT ? `${flat.slice(0, BODY_LIMIT - 1).trimEnd()}…` : flat;
+};
+
+/** Where a reviewer reads why a run was held, in a sentence. Flags as the rules engine wrote them. */
+export function reviewReason(flags: { code: string; message: string }[]): string {
+  const unusual = flags.filter((f) => f.code !== "manual_entry");
+  if (unusual.length > 0) return unusual.map((f) => f.message).join(" ");
+  return "Added by hand.";
+}
+
+/** Sent to a race's organizers and marshals when a run needs a second look. */
+export function reviewNeededPush(
+  runner: string,
+  type: "run" | "walk",
+  distanceM: number,
+  flags: { code: string; message: string }[],
+): PushMessage {
+  return {
+    title: `${runner}'s ${formatMiles(distanceM)} mi ${type} needs a second look`,
+    body: clip(reviewReason(flags)),
+    url: "/admin",
+  };
+}
+
+/** Sent to the runner once an organizer or marshal has decided. */
+export function reviewedPush(
+  decision: "approve" | "reject",
+  type: "run" | "walk",
+  distanceM: number,
+  note: string | null,
+): PushMessage {
+  const what = `Your ${formatMiles(distanceM)} mi ${type}`;
+  return decision === "approve"
+    ? { title: `${what} counts ✓`, body: "An organizer checked it. Keep them coming.", url: "/my-race" }
+    : {
+        title: `${what} wasn't counted`,
+        body: note?.trim() ? clip(note) : "An organizer turned it down. If that looks wrong, ask them about it.",
+        url: "/my-race",
+      };
+}
+
+/** Sent to someone @mentioned in the race chat. An empty body is a GIF. */
+export function mentionPush(author: string, body: string): PushMessage {
+  return { title: `${author} mentioned you`, body: clip(body) || "Sent a GIF", url: "/feed?tab=chat" };
+}
+
+/** Sent to everyone in the race when an organizer posts an announcement. */
+export function announcementPush(race: string, body: string): PushMessage {
+  return { title: `📣 ${race}`, body: clip(body), url: "/feed?tab=chat" };
+}
+
+/**
+ * Who a chat message @mentions, matched against the race's members by display name (any
+ * case, longest name first so "@Ann Lee" isn't read as "@Ann"). "@everyone" isn't special.
+ */
+export function mentionedIds(body: string, members: { id: string; name: string }[]): string[] {
+  const text = body.toLowerCase();
+  const found = new Set<string>();
+  const byLength = [...members].filter((m) => m.name.trim()).sort((a, b) => b.name.length - a.name.length);
+  let i = text.indexOf("@");
+  while (i !== -1) {
+    const rest = text.slice(i + 1);
+    const hit = byLength.find((m) => {
+      const name = m.name.trim().toLowerCase();
+      if (!rest.startsWith(name)) return false;
+      const next = rest.charAt(name.length);
+      return next === "" || !/[\p{L}\p{N}_]/u.test(next);
+    });
+    if (hit) found.add(hit.id);
+    i = text.indexOf("@", i + 1);
+  }
+  return [...found];
+}

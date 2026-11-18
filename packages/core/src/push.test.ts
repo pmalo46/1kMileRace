@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { cheerPush, commentPush, milestonePush, overtakePush, ownMilestonePush } from "./push.ts";
+import {
+  announcementPush,
+  cheerPush,
+  commentPush,
+  mentionPush,
+  mentionedIds,
+  milestonePush,
+  overtakePush,
+  ownMilestonePush,
+  reviewNeededPush,
+  reviewReason,
+  reviewedPush,
+} from "./push.ts";
 import { milesToMeters } from "./units.ts";
 
 const run = { id: "f1", type: "activity" as const, activity: { type: "run" as const, distanceM: milesToMeters(3.25) } };
@@ -80,5 +92,40 @@ describe("overtake pushes", () => {
     expect(push.title).toBe("Sam walked past you 🚶");
     expect(push.body).toBe("Neck and neck in Fall 1K. Send a cheer.");
     expect(push.url).toBe("/leaderboard");
+  });
+});
+
+describe("review and chat notifications", () => {
+  const flags = [
+    { code: "manual_entry", message: "Entered by hand." },
+    { code: "pace_too_fast", message: "A 3:30/mi pace is faster than we expect on foot." },
+  ];
+
+  it("tells reviewers what's unusual, leaving out the hand-entry flag when there's more", () => {
+    const p = reviewNeededPush("Ann", "run", milesToMeters(3.1), flags);
+    expect(p.title).toBe("Ann's 3.1 mi run needs a second look");
+    expect(p.body).toBe("A 3:30/mi pace is faster than we expect on foot.");
+    expect(p.url).toBe("/admin");
+    expect(reviewReason([flags[0]!])).toBe("Added by hand.");
+  });
+
+  it("tells the runner the decision, with the organizer's note when turned down", () => {
+    expect(reviewedPush("approve", "walk", milesToMeters(2), null).title).toBe("Your 2.0 mi walk counts ✓");
+    const no = reviewedPush("reject", "run", milesToMeters(5), "Looks like a bike ride");
+    expect([no.title, no.body]).toEqual(["Your 5.0 mi run wasn't counted", "Looks like a bike ride"]);
+    expect(reviewedPush("reject", "run", milesToMeters(5), "  ").body).toMatch(/ask them/);
+  });
+
+  it("finds @mentions by display name, longest name first, ignoring case", () => {
+    const members = [
+      { id: "a", name: "Ann" },
+      { id: "al", name: "Ann Lee" },
+      { id: "b", name: "Bo" },
+    ];
+    expect(mentionedIds("@ann lee you in for Saturday? cc @Bo", members).sort()).toEqual(["al", "b"]);
+    expect(mentionedIds("@Ann, @Bob?", members)).toEqual(["a"]);
+    expect(mentionedIds("email me at bo@example.com", members)).toEqual([]);
+    expect(mentionPush("Ann", "").body).toBe("Sent a GIF");
+    expect(announcementPush("Neighborhood 1K", "Group run 8am").title).toBe("📣 Neighborhood 1K");
   });
 });

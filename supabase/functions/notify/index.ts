@@ -3,11 +3,23 @@
 // trigger a notification for something they really did, moments ago.
 //
 // POST { kind: "cheer", feedItemId, emoji } | { kind: "comment", commentId }
-//   200 { notified } · 401 not signed in · 400 malformed · 404 no such recent cheer or comment
+//    | { kind: "review", activityId } | { kind: "message", messageId }
+//   200 { notified } · 401 not signed in · 400 malformed · 404 nothing recent of the caller's to announce
+//
+// review: the caller's own decision on a run tells its runner. message: an announcement goes
+// to the whole race; a chat message only to the people it @mentions.
 
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { cheerPush, commentPush, type FeedItemSummary } from "@1k/core";
+import {
+  announcementPush,
+  cheerPush,
+  commentPush,
+  mentionPush,
+  mentionedIds,
+  reviewedPush,
+  type FeedItemSummary,
+} from "@1k/core";
 import { sendPush } from "../_shared/push.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -20,7 +32,22 @@ const json = (status: number, body: unknown) =>
 const Body = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("cheer"), feedItemId: z.uuid(), emoji: z.string().min(1).max(16) }).strict(),
   z.object({ kind: z.literal("comment"), commentId: z.uuid() }).strict(),
+  z.object({ kind: z.literal("review"), activityId: z.uuid() }).strict(),
+  z.object({ kind: z.literal("message"), messageId: z.uuid() }).strict(),
 ]);
+
+/** Everyone active in a race except one person, with their names for matching @mentions. */
+async function racemates(raceId: string, except: string) {
+  const { data } = await admin
+    .from("race_members")
+    .select("user_id, profile:profiles(display_name)")
+    .match({ race_id: raceId, status: "active" })
+    .neq("user_id", except);
+  return (data ?? []).map((m) => ({
+    id: m.user_id as string,
+    name: (m.profile as unknown as { display_name: string } | null)?.display_name ?? "",
+  }));
+}
 
 /** Older cheers and comments can't be re-announced. */
 const FRESH_MS = 5 * 60 * 1000;
@@ -69,6 +96,42 @@ Deno.serve(async (req) => {
     if (item.actorId === user.id) return json(200, { notified: 0 });
     await sendPush(admin, [item.actorId], cheerPush(name, body.emoji, item));
     return json(200, { notified: 1 });
+  }
+
+  if (body.kind === "review") {
+    const { data: review } = await admin
+      .from("activity_reviews")
+      .select("decision, note, created_at, activity:activities(user_id, type, distance_m)")
+      .match({ activity_id: body.activityId, reviewer_id: user.id })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const activity = review?.activity as unknown as { user_id: string; type: "run" | "walk"; distance_m: number } | null;
+    if (!review || !activity || !isFresh(review.created_at)) return json(404, { error: "No recent review to announce." });
+    await sendPush(
+      admin,
+      [activity.user_id],
+      reviewedPush(review.decision as "approve" | "reject", activity.type, activity.distance_m, review.note),
+    );
+    return json(200, { notified: 1 });
+  }
+
+  if (body.kind === "message") {
+    const { data: message } = await admin
+      .from("messages")
+      .select("race_id, kind, body, created_at, race:races(name)")
+      .match({ id: body.messageId, user_id: user.id })
+      .maybeSingle();
+    if (!message || !isFresh(message.created_at)) return json(404, { error: "No recent message to announce." });
+    const others = await racemates(message.race_id, user.id);
+    if (message.kind === "announcement") {
+      const race = (message.race as unknown as { name: string } | null)?.name ?? "Your race";
+      await sendPush(admin, others.map((o) => o.id), announcementPush(race, message.body));
+      return json(200, { notified: others.length });
+    }
+    const mentioned = mentionedIds(message.body, others);
+    await sendPush(admin, mentioned, mentionPush(name, message.body));
+    return json(200, { notified: mentioned.length });
   }
 
   const { data: comment } = await admin
