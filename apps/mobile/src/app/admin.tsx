@@ -397,14 +397,14 @@ function RaceSettings({
     run('announce', async () => {
       await postAnnouncement(raceId, announcement.trim());
       setAnnouncement('');
-      Alert.alert('Sent', 'Everyone got a notification, and it’s pinned at the top of Feed and Chat.');
+      Alert.alert('Sent', 'Everyone got a notification, and it’s pinned at the top of Feed and Chat for 3 days.');
     });
 
   return (
     <View style={{ gap: Space.md }}>
       <Card>
         <Text variant="label">Announcement</Text>
-        <Text variant="muted">Everyone gets a notification, and it stays pinned at the top of Feed and Chat.</Text>
+        <Text variant="muted">Everyone gets a notification, and it stays pinned at the top of Feed and Chat for 3 days.</Text>
         <Field
           label="Message"
           value={announcement}
