@@ -1,7 +1,9 @@
 import {
+  LONG_HAND_ENTRY_M,
   formatDuration,
   formatMiles,
   formatPace,
+  metersToMiles,
   paceSecondsPerMile,
   reviewReason,
   trackingMethodOf,
@@ -19,7 +21,6 @@ import { Segmented } from '@/components/segmented';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import {
-  approveHandEntered,
   evidenceUrl,
   isOrganizer,
   postAnnouncement,
@@ -102,7 +103,7 @@ export default function Admin() {
 
 // --- Review ----------------------------------------------------------------------------
 
-const isPlainHandEntry = (r: PendingRun) => r.source === 'manual' && r.flags.every((f) => f.code === 'manual_entry');
+const LONG_MILES = Math.round(metersToMiles(LONG_HAND_ENTRY_M));
 
 function ReviewQueue({
   raceId,
@@ -113,46 +114,24 @@ function ReviewQueue({
   runs: PendingRun[] | null;
   onChanged: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
   if (!runs) return <ActivityIndicator style={{ marginTop: Space.lg }} />;
   if (runs.length === 0) {
     return (
       <Card>
         <Text variant="heading">Nothing waiting.</Text>
         <Text variant="muted">
-          Runs that look unusual, or were added by hand, land here. You&apos;ll get a notification when one needs you.
+          Runs land here when they could be miles nobody ran: too fast for feet, longer than the route, a treadmill photo
+          from another time, or {LONG_MILES}+ miles added by hand. You&apos;ll get a notification when one does.
         </Text>
       </Card>
     );
   }
-  const plain = runs.filter(isPlainHandEntry).length;
-
-  const approvePlain = async () => {
-    setBusy(true);
-    try {
-      const n = await approveHandEntered(raceId);
-      Alert.alert('Done', `${n} ${n === 1 ? 'run counts' : 'runs count'} now.`);
-      onChanged();
-    } catch (e) {
-      Alert.alert('Couldn’t approve', e instanceof Error ? e.message : 'Try again.');
-    }
-    setBusy(false);
-  };
-
   return (
     <View style={{ gap: Space.md }}>
       <Text variant="muted">
         These runs count while they wait. Count it keeps them; Don&apos;t count it takes the miles back off and tells
         the runner why.
       </Text>
-      {plain > 0 && (
-        <Button
-          title={`Approve ${plain} ${plain === 1 ? 'run' : 'runs'} added by hand, nothing else unusual`}
-          variant="secondary"
-          onPress={approvePlain}
-          loading={busy}
-        />
-      )}
       {runs.map((run) => (
         <ReviewCard key={run.activity_id} raceId={raceId} run={run} onDone={onChanged} />
       ))}

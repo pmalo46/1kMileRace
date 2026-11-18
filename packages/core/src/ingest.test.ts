@@ -64,18 +64,19 @@ describe("planIngest", () => {
     expect(planIngest(short, [], DEFAULT_RACE_RULES, now, { toFinishM: milesToMeters(0.4) }).kind).toBe("insert");
   });
 
-  it("inserts a hand-entered outdoor run as pending review", () => {
+  it("inserts a short hand-entered outdoor run as counting, noted as typed in by hand", () => {
     const p = plan(input());
     expect(p.kind).toBe("insert");
     if (p.kind !== "insert") return;
-    expect(p.evaluation.status).toBe("flagged");
+    expect(p.evaluation.status).toBe("accepted");
+    expect(p.row.flags.map((f) => f.code)).toEqual(["manual_entry"]);
     expect(p.row).toMatchObject({
       source: "manual",
       environment: "outdoor",
       started_at: "2026-10-02T12:00:00.000Z",
       ended_at: "2026-10-02T12:30:00.000Z",
       moving_time_s: 1800,
-      verification: "pending",
+      verification: "device",
       source_external_id: null,
       polyline: null,
       splits: null,
@@ -91,11 +92,11 @@ describe("planIngest", () => {
     expect(p.evaluation.issues.map((i) => i.code)).toEqual(["treadmill_photo_required"]);
   });
 
-  it("accepts a treadmill run with a photo, pending review, with no issues to show", () => {
+  it("accepts a treadmill run with a photo as photo-verified, with no issues to show", () => {
     const p = plan(input({ source: "treadmill_manual", environment: "treadmill", evidenceCount: 1 }));
     expect(p.kind).toBe("insert");
     if (p.kind !== "insert") return;
-    expect(p.row.verification).toBe("pending");
+    expect(p.row.verification).toBe("photo");
     expect(p.row.flags).toEqual([]);
   });
 

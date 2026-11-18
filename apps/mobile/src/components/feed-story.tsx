@@ -3,10 +3,20 @@ import { View } from 'react-native';
 
 import { timeAgo } from '@/lib/feed';
 import type { FeedItem } from '@/lib/types';
-import { Space } from '@/theme/tokens';
+import { Radius, Space } from '@/theme/tokens';
 import { useTheme } from '@/theme/use-theme';
 
 import { Text } from './text';
+
+/** Small labels on a run that say how it was logged, so nobody has to dig for it. */
+function tags(item: FeedItem): string[] {
+  const a = item.activity;
+  if (item.type !== 'activity' || !a) return [];
+  const out: string[] = [];
+  if (a.source === 'manual' || a.source === 'treadmill_manual') out.push('Logged manually');
+  if (a.flags?.some((f) => f.code === 'pace_too_slow')) out.push('Slow pace');
+  return out;
+}
 
 /** What happened, in words: "ran 3.2 miles", "hit 100 miles", "joined the race". */
 function story(item: FeedItem): { headline: string; detail?: string } {
@@ -64,6 +74,26 @@ export function FeedStory({ item, isMe, time }: { item: FeedItem; isMe: boolean;
         <Text variant="muted" size={13}>
           {[detail, time ?? timeAgo(item.created_at)].filter(Boolean).join(' · ')}
         </Text>
+        {tags(item).length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Space.xs, marginTop: 2 }}>
+            {tags(item).map((t) => (
+              <Text
+                key={t}
+                variant="label"
+                size={11}
+                style={{
+                  color: colors.text,
+                  backgroundColor: colors.surfaceAlt,
+                  borderRadius: Radius.sm,
+                  overflow: 'hidden',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                }}>
+                {t}
+              </Text>
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );

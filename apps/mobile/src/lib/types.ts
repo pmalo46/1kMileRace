@@ -45,6 +45,9 @@ export interface FeedItem {
     moving_time_s: number;
     /** False for miles typed in without a time: moving_time_s is then a stand-in, not shown. */
     time_recorded?: boolean;
+    source?: string;
+    /** Notes the rules engine left, e.g. pace_too_slow. */
+    flags?: { code: string }[];
   } | null;
   cheers: { user_id: string; emoji: string }[];
   comments: { count: number }[];

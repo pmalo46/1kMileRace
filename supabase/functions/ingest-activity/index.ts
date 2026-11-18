@@ -172,11 +172,9 @@ Deno.serve(async (req) => {
     .select("race_id, counted_distance_m, race:races(name)")
     .eq("activity_id", saved.id);
 
-  // A run held for something unusual (or a treadmill photo to check) goes to the organizers
-  // and marshals of each race it counts in. Runs only flagged for being typed in by hand
-  // just add to the count in their review queue, so organizers aren't pinged for every one.
-  const unusual = plan.evaluation.issues.some((i) => i.code !== "manual_entry") || activity.source === "treadmill_manual";
-  if (plan.evaluation.status === "flagged" && unusual) {
+  // Only runs that could put miles on the board that weren't run or walked wait for review
+  // (see needsReview), so each one goes to the organizers and marshals of the races it counts in.
+  if (plan.evaluation.status === "flagged") {
     for (const c of counted ?? []) {
       const { data: reviewers } = await admin
         .from("race_members")

@@ -352,7 +352,7 @@ function Tracking({ stats }: { stats: RaceStats }) {
         ))}
       </View>
       <Text variant="muted" size={14}>
-        Runs added by hand get a second look from an organizer or marshal.
+        Runs added by hand show as Logged manually in the feed.
       </Text>
     </Card>
   );
