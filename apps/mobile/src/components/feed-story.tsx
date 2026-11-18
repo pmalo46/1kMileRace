@@ -1,4 +1,11 @@
-import { formatDuration, formatMiles, formatPace, paceSecondsPerMile } from '@1k/core';
+import {
+  formatDuration,
+  formatMiles,
+  formatPace,
+  paceSecondsPerMile,
+  trackingMethodOf,
+  type TrackingMethod,
+} from '@1k/core';
 import { View } from 'react-native';
 
 import { timeAgo } from '@/lib/feed';
@@ -8,14 +15,18 @@ import { useTheme } from '@/theme/use-theme';
 
 import { Text } from './text';
 
-/** Small labels on a run that say how it was logged, so nobody has to dig for it. */
+const HOW_TRACKED: Record<TrackingMethod, string> = {
+  app: 'GPS tracked',
+  watch: 'Watch sync',
+  treadmill: 'Logged manually',
+  hand: 'Logged manually',
+};
+
+/** A small label on each run saying how it was tracked, so nobody has to dig for it. */
 function tags(item: FeedItem): string[] {
   const a = item.activity;
-  if (item.type !== 'activity' || !a) return [];
-  const out: string[] = [];
-  if (a.source === 'manual' || a.source === 'treadmill_manual') out.push('Logged manually');
-  if (a.flags?.some((f) => f.code === 'pace_too_slow')) out.push('Slow pace');
-  return out;
+  if (item.type !== 'activity' || !a?.source) return [];
+  return [HOW_TRACKED[trackingMethodOf(a.source)]];
 }
 
 /** What happened, in words: "ran 3.2 miles", "hit 100 miles", "joined the race". */

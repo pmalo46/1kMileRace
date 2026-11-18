@@ -1,4 +1,4 @@
-import type { TrackPoint } from '@1k/core';
+import { decodePolyline, type TrackPoint } from '@1k/core';
 import { useMemo } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
@@ -57,4 +57,17 @@ export function RouteSketch({ points, height = 220 }: { points: TrackPoint[]; he
       </Svg>
     </View>
   );
+}
+
+/** A saved route (as stored on the run, Google-encoded) drawn the same way, e.g. on a feed post. */
+export function SavedRoute({ polyline, height = 150 }: { polyline: string; height?: number }) {
+  const points = useMemo<TrackPoint[]>(() => {
+    try {
+      return decodePolyline(polyline).map((p) => ({ ...p, t: 0, segment: 0 }));
+    } catch {
+      return [];
+    }
+  }, [polyline]);
+  if (points.length < 2) return null;
+  return <RouteSketch points={points} height={height} />;
 }

@@ -13,6 +13,7 @@ import { Chat } from '@/components/chat';
 import { CommentComposer } from '@/components/comment-composer';
 import { FeedStory } from '@/components/feed-story';
 import { Quote } from '@/components/quote';
+import { SavedRoute } from '@/components/route-sketch';
 import { Segmented } from '@/components/segmented';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
@@ -279,6 +280,11 @@ function PostRow({
       </Pressable>
       <View style={{ marginLeft: INDENT, gap: Space.sm }}>
         {celebrating && item.payload.miles != null && <Quote quote={milestoneQuote(item.payload.miles)} size={16} />}
+        {item.activity?.polyline && (
+          <Pressable onPress={() => openComments(item)} accessibilityRole="imagebutton" accessibilityLabel="Route map">
+            <SavedRoute polyline={item.activity.polyline} />
+          </Pressable>
+        )}
         {item.photoUrl && (
           <Pressable
             onPress={() => openComments(item)}

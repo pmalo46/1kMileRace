@@ -167,7 +167,7 @@ export function ruleSections(race?: { goal_m: number; starts_at: string; ends_at
         'Watch runs and walks sync from Apple Health (iPhone) or Health Connect (Android): the app checks the last week each time you open it. Workouts typed into those apps by hand are skipped; add those here instead.',
         `Runs added by hand count too, and show as Logged manually in the feed. Ones of ${Math.round(metersToMiles(LONG_HAND_ENTRY_M))} miles or more get a second look from an organizer or marshal.`,
         rules.requireTreadmillPhoto
-          ? 'Treadmill runs added by hand need a photo of the treadmill screen showing distance and time, taken around the time of the run. Only organizers see it. A treadmill run recorded by a watch needs no photo.'
+          ? 'Treadmill runs added by hand need a photo of the treadmill screen showing distance and time, taken around the time of the run. It shows on the run’s post in the feed. A treadmill run recorded by a watch needs no photo.'
           : '',
         'The same run recorded twice, say in the app and on your watch, counts once. The app keeps the best-measured copy.',
       ].filter(Boolean),
@@ -201,7 +201,7 @@ export function ruleSections(race?: { goal_m: number; starts_at: string; ends_at
       heading: 'Reviews',
       lines: [
         `An organizer or marshal takes a second look at a run faster than ${formatPace(rules.fastestPaceSecPerMile)} a mile, one longer than the route it recorded, a treadmill photo taken at another time, or a run of ${Math.round(metersToMiles(LONG_HAND_ENTRY_M))} miles or more added by hand.`,
-        `A walk slower than ${formatPace(rules.slowestPaceSecPerMile)} a mile counts straight away, marked Slow pace in the feed.`,
+        `A slow walk or a run with lots of stopping counts straight away.`,
         "It counts while it waits. If it's turned down, its miles come off your total, along with any milestones it earned, and you'll see why on My Race.",
         'Runs recorded with fake GPS are turned away.',
         "None of it is an accusation. It keeps the race honest for everybody.",

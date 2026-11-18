@@ -46,8 +46,8 @@ export interface FeedItem {
     /** False for miles typed in without a time: moving_time_s is then a stand-in, not shown. */
     time_recorded?: boolean;
     source?: string;
-    /** Notes the rules engine left, e.g. pace_too_slow. */
-    flags?: { code: string }[];
+    /** The recorded route, Google-encoded, for runs recorded in the app. */
+    polyline?: string | null;
     /** A treadmill run's console photo, in the private evidence bucket. */
     evidence?: { storage_path: string }[];
   } | null;
