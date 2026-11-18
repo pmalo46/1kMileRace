@@ -30,16 +30,15 @@ alter policy "evidence visible to owner and marshals" on activity_evidence renam
 alter policy "evidence visible to racemates" on activity_evidence
   using (exists (select 1 from activities a where a.id = activity_id and private.shares_race(a.user_id)));
 
-alter policy "evidence visible to owner and marshals" on storage.objects rename to "evidence visible to racemates";
-alter policy "evidence visible to racemates" on storage.objects
+-- Storage's tables belong to Supabase's storage service, so its existing rules can't be
+-- changed from a migration; a new rule can be added, and either rule letting someone see a
+-- photo is enough. The old one (owner, organizers, marshals) is a subset of this one.
+create policy "evidence visible to racemates" on storage.objects for select to authenticated
   using (
-    bucket_id = 'evidence' and (
-      (storage.foldername(name))[1] = (select auth.uid())::text
-      or case
-        -- The folder is the uploader's id; anything else is nobody's to share.
-        when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-          then private.shares_race(((storage.foldername(name))[1])::uuid)
-        else false
-      end
-    )
+    bucket_id = 'evidence' and case
+      -- The folder is the uploader's id; anything else is nobody's to share.
+      when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        then private.shares_race(((storage.foldername(name))[1])::uuid)
+      else false
+    end
   );
