@@ -24,13 +24,17 @@ export default function Intro() {
   const slides = useMemo(introSlides, []);
   const pages = slides.length + 1;
   const [page, setPage] = useState(0);
+  // The page as of the last tap, ahead of the next render, so quick taps each move one page.
+  const current = useRef(0);
   const scroller = useRef<ScrollView>(null);
   const preview = useInvitePreview(useMemo(pendingInvite, []));
   const last = page === pages - 1;
 
   const goTo = (i: number) => {
-    scroller.current?.scrollTo({ x: i * width, animated: true });
-    setPage(i);
+    const target = Math.max(0, Math.min(pages - 1, i));
+    current.current = target;
+    scroller.current?.scrollTo({ x: target * width, animated: true });
+    setPage(target);
   };
 
   const finish = (mode: 'sign-up' | 'sign-in') => {
@@ -56,7 +60,10 @@ export default function Intro() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}>
+        onMomentumScrollEnd={(e) => {
+          current.current = Math.round(e.nativeEvent.contentOffset.x / width);
+          setPage(current.current);
+        }}>
         {slides.map((slide) => (
           <Slide key={slide.art} slide={slide} width={width} />
         ))}
@@ -92,7 +99,7 @@ export default function Intro() {
             </View>
           )
         ) : (
-          <Button title="Next" onPress={() => goTo(page + 1)} />
+          <Button title="Next" onPress={() => goTo(current.current + 1)} />
         )}
       </View>
     </SafeAreaView>

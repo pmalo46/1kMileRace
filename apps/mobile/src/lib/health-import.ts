@@ -18,7 +18,7 @@ export type HealthStatus =
   | 'unsupported'
   /** Health Connect needs installing or updating from the Play Store (Android only). */
   | 'needs-install'
-  /** Available, but the runner hasn't been asked to let 1K Miles read workouts. */
+  /** Available, but the runner hasn't been asked to let 1K Mile Race read workouts. */
   | 'not-connected'
   | 'connected';
 

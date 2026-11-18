@@ -1,4 +1,4 @@
-# Working on 1K Miles
+# Working on 1K Mile Race
 
 Welcome. This gets you from a fresh clone to the app running on your phone, and explains how changes get in.
 
@@ -7,7 +7,7 @@ Welcome. This gets you from a fresh clone to the app running on your phone, and 
 - **Node.js 22 or newer** (24 recommended) and npm, which comes with it.
 - **Git**, and access to this repo. Ask Patrick to add you as a collaborator.
 - **A phone to run the app on.**
-  - **Android**: install the 1K Miles development build. Ask Patrick for the install link; it's the same app he tests with.
+  - **Android**: install the 1K Mile Race development build. Ask Patrick for the install link; it's the same app he tests with.
   - **iPhone**: there's no iPhone build yet. Install **Expo Go** from the App Store instead. Every screen works in it, but a few features switch themselves off: recording with the screen locked, push notifications, and importing runs from a watch.
 
 ## First-time setup
@@ -37,7 +37,7 @@ npx expo start
 
 A QR code appears in the terminal.
 
-- **Android development build**: open 1K Miles and scan it.
+- **Android development build**: open 1K Mile Race and scan it.
 - **iPhone with Expo Go**: press `s` in the terminal to switch to Expo Go, then scan the code with the iPhone camera.
 
 Your phone and computer need to be on the same Wi-Fi. If that's a problem (a work network, or testing outdoors), start it with `npx expo start --tunnel` instead.

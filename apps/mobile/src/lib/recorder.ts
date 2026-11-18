@@ -137,7 +137,7 @@ async function startTracking(): Promise<TrackingMode> {
         showsBackgroundLocationIndicator: true,
         foregroundService: {
           notificationTitle: 'Recording your run',
-          notificationBody: 'Measuring distance and pace. Open 1K Miles to pause or finish.',
+          notificationBody: 'Measuring distance and pace. Open 1K Mile Race to pause or finish.',
           notificationColor: '#F2552C',
           killServiceOnDestroy: false,
         },
