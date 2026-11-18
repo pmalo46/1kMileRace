@@ -142,7 +142,7 @@ export function RaceStatsView({
             Race week
           </Text>
           <WeekLine
-            title={sameWeek ? 'Biggest and hardest week' : 'Biggest week'}
+            title="Biggest week"
             week={stats.bestWeek}
             value={`${formatMiles(stats.bestWeek.distanceM)} mi${sameWeek ? ` · ${hoursMinutes(stats.bestWeek.movingTimeS)}` : ''}`}
           />
