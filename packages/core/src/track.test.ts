@@ -4,6 +4,7 @@ import {
   encodePolyline,
   haversineM,
   mileSplits,
+  paceStretches,
   polylineLengthM,
   summarizeTrack,
   type TrackPoint,
@@ -144,5 +145,35 @@ describe("mile splits", () => {
 
   it("leaves out a last stretch under a tenth of a mile", () => {
     expect(mileSplits([{ mile: 1, movingTimeS: 600 }], 1.05 * METERS_PER_MILE, 630)).toHaveLength(1);
+  });
+});
+
+describe("pace along the route", () => {
+  it("gives each stretch its own pace, so a fast part and a slow part show apart", () => {
+    // 600 m at 4 m/s (6:42/mi), then 600 m at 1.5 m/s (17:53/mi).
+    const fast = straightRun(150, 4);
+    const end = fast.at(-1)!;
+    const slow = straightRun(400, 1.5, { start: end.t, lat0: end.lat }).slice(1);
+    const s = summarizeTrack([...fast, ...slow]);
+    expect(s.route).toHaveLength(decodePolyline(s.polyline).length);
+    const stretches = paceStretches(s.route);
+    expect(stretches[0]!.paceS!).toBeCloseTo(METERS_PER_MILE / 4, -1);
+    expect(stretches.at(-1)!.paceS!).toBeCloseTo(METERS_PER_MILE / 1.5, -1);
+    // Stretches cover the route end to end, one after another.
+    expect(stretches[0]!.from).toBe(0);
+    expect(stretches.at(-1)!.to).toBe(s.route.length - 1);
+    stretches.slice(1).forEach((x, k) => expect(x.from).toBe(stretches[k]!.to));
+  });
+
+  it("doesn't draw a stretch across a pause", () => {
+    const first = straightRun(100, 3);
+    const end = first.at(-1)!;
+    // Resumed a block away, ten minutes later.
+    const second = straightRun(100, 3, { start: end.t + 600_000, lat0: end.lat + 200 / M_PER_DEG, segment: 1 });
+    const s = summarizeTrack([...first, ...second]);
+    const stretches = paceStretches(s.route);
+    const split = s.route.findIndex((p) => p.segment === 1);
+    expect(stretches.some((x) => x.from < split && x.to >= split)).toBe(false);
+    for (const x of stretches) expect(x.paceS!).toBeCloseTo(METERS_PER_MILE / 3, -1);
   });
 });

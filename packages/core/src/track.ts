@@ -18,12 +18,22 @@ export interface TrackSummary {
   elevationGainM: number;
   /** Google encoded polyline of the points that counted. */
   polyline: string;
+  /** The same points with the moving time when each was reached, for drawing pace along the route. */
+  route: RoutePoint[];
   /** Cumulative moving time at each whole mile. */
   splits: { mile: number; movingTimeS: number }[];
   /** How much of it was running and how much walking, judged a short stretch at a time. */
   gait: GaitSplit;
   /** Fixes dropped as implausible jumps. */
   spikes: number;
+}
+
+/** A point on the route and the moving time, in seconds, when the runner reached it. */
+export interface RoutePoint {
+  lat: number;
+  lon: number;
+  movingS: number;
+  segment: number;
 }
 
 export interface GaitPart {
@@ -70,6 +80,11 @@ export function haversineM(a: { lat: number; lon: number }, b: { lat: number; lo
  */
 export function summarizeTrack(points: TrackPoint[]): TrackSummary {
   const kept: TrackPoint[] = [];
+  const route: RoutePoint[] = [];
+  const keep = (p: TrackPoint) => {
+    kept.push(p);
+    route.push({ lat: p.lat, lon: p.lon, movingS: movingMs / 1000, segment: p.segment });
+  };
   const splits: TrackSummary["splits"] = [];
   let distanceM = 0;
   let movingMs = 0;
@@ -99,7 +114,7 @@ export function summarizeTrack(points: TrackPoint[]): TrackSummary {
     if (!prev || p.segment !== prev.segment) {
       closeWindow();
       prev = p;
-      kept.push(p);
+      keep(p);
       altBase = p.alt ?? altBase;
       continue;
     }
@@ -133,7 +148,7 @@ export function summarizeTrack(points: TrackPoint[]): TrackSummary {
       }
     }
     prev = p;
-    kept.push(p);
+    keep(p);
   }
 
   closeWindow();
@@ -143,6 +158,7 @@ export function summarizeTrack(points: TrackPoint[]): TrackSummary {
     movingTimeS: Math.round(movingMs / 1000),
     elevationGainM: Math.round(climbM),
     polyline: encodePolyline(kept),
+    route,
     splits,
     gait: {
       run: { distanceM: gaitM.run, movingTimeS: Math.round(gaitMs.run / 1000) },
@@ -150,6 +166,49 @@ export function summarizeTrack(points: TrackPoint[]): TrackSummary {
     },
     spikes,
   };
+}
+
+/** Route stretches are about this long: short enough to show a hill or a walk break, long enough to smooth GPS wobble. */
+export const PACE_STRETCH_M = 80;
+
+/** A piece of the route, from one point index to another (inclusive), and its pace. */
+export interface PaceStretch {
+  from: number;
+  to: number;
+  /** Seconds per mile, or null if no moving time was recorded on it. */
+  paceS: number | null;
+}
+
+/**
+ * Cuts the route into stretches of about `stepM` and gives each its own pace, for coloring
+ * the route by pace. A pause (a new segment) always ends a stretch, so the gap isn't counted.
+ */
+export function paceStretches(route: RoutePoint[], stepM = PACE_STRETCH_M): PaceStretch[] {
+  const out: PaceStretch[] = [];
+  let from = 0;
+  let distM = 0;
+  const close = (to: number) => {
+    if (to > from) {
+      const s = route[to]!.movingS - route[from]!.movingS;
+      const last = out.at(-1);
+      // A short scrap at the end of a segment joins the stretch before it.
+      if (distM < stepM / 4 && last && last.to === from) last.to = to;
+      else out.push({ from, to, paceS: distM > 0 && s > 0 ? (s / distM) * METERS_PER_MILE : null });
+    }
+    from = to;
+    distM = 0;
+  };
+  for (let i = 1; i < route.length; i++) {
+    if (route[i]!.segment !== route[i - 1]!.segment) {
+      close(i - 1);
+      from = i;
+      continue;
+    }
+    distM += haversineM(route[i - 1]!, route[i]!);
+    if (distM >= stepM) close(i);
+  }
+  close(route.length - 1);
+  return out;
 }
 
 export interface MileSplit {

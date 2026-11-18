@@ -27,6 +27,7 @@ import { Card } from './card';
 import { SplitBar } from './charts/split-bar';
 import { MileWall } from './mile-wall';
 import { Quote } from './quote';
+import { PacedRoute } from './route-sketch';
 import { Screen } from './screen';
 import { Text } from './text';
 
@@ -113,6 +114,13 @@ export function Logged({ result, miles, track }: { result: LogResult; miles: str
               ? 'One more run like this'
               : `About ${runsToNext === 1 ? 'one more run' : `${runsToNext} more runs`} like this`}
           </Text>
+        </Card>
+      )}
+
+      {track && track.route.length >= 2 && (
+        <Card>
+          <Text variant="label">Your route</Text>
+          <PacedRoute route={track.route} height={200} />
         </Card>
       )}
 
