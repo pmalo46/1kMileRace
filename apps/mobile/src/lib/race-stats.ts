@@ -15,6 +15,7 @@ interface Row {
     splits: PaceDetail | null;
     type: 'run' | 'walk';
     time_recorded: boolean;
+    source: string;
   };
 }
 
@@ -35,7 +36,7 @@ export function useRunnerStats(race: Race | null | undefined, userId: string | u
     const { data, error } = await supabase
       .from('race_activities')
       .select(
-        'activity:activities!inner(started_at, distance_m, moving_time_s, environment, elevation_gain_m, splits, type, time_recorded)',
+        'activity:activities!inner(started_at, distance_m, moving_time_s, environment, elevation_gain_m, splits, type, time_recorded, source)',
       )
       .eq('race_id', raceId)
       .eq('user_id', userId);
@@ -51,6 +52,7 @@ export function useRunnerStats(race: Race | null | undefined, userId: string | u
       // Missing on a server from before untimed runs: every run was timed then.
       timed: a.time_recorded !== false,
       type: a.type,
+      source: a.source,
     }));
     setStats(
       raceStats(activities, {

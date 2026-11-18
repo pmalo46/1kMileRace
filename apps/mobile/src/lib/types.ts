@@ -9,7 +9,11 @@ export interface Race {
   timezone: string;
   goal_m: number;
   invite_code: string;
+  /** The signed-in runner's role in this race. */
+  myRole?: MemberRole;
 }
+
+export type MemberRole = 'organizer' | 'marshal' | 'participant' | 'supporter';
 
 export interface Standing {
   race_id: string;
@@ -41,7 +45,14 @@ export interface FeedItem {
     moving_time_s: number;
     /** False for miles typed in without a time: moving_time_s is then a stand-in, not shown. */
     time_recorded?: boolean;
+    source?: string;
+    /** The recorded route, Google-encoded, for runs recorded in the app. */
+    polyline?: string | null;
+    /** A treadmill run's console photo, in the private evidence bucket. */
+    evidence?: { storage_path: string }[];
   } | null;
+  /** A short-lived link to the treadmill photo, when the run has one. */
+  photoUrl?: string;
   cheers: { user_id: string; emoji: string }[];
   comments: { count: number }[];
   /** The newest comment, if any. */

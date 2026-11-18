@@ -8,7 +8,7 @@ export default function AppTabs() {
     <NativeTabs backgroundColor={colors.background} tintColor={colors.accent}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'flame', selected: 'flame.fill' }} md="local_fire_department" />
+        <NativeTabs.Trigger.Icon sf={{ default: 'figure.run', selected: 'figure.run' }} md="directions_run" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="my-race">
         <NativeTabs.Trigger.Label>My Race</NativeTabs.Trigger.Label>

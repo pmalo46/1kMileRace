@@ -1,5 +1,5 @@
 import { polylineLengthM } from "./track.ts";
-import { formatPace, metersToMiles, paceSecondsPerMile, SECONDS_PER_DAY } from "./units.ts";
+import { formatPace, METERS_PER_MILE, metersToMiles, paceSecondsPerMile, SECONDS_PER_DAY } from "./units.ts";
 import type { ActivityInput, RaceRules, Verification } from "./types.ts";
 
 export type IssueSeverity = "reject" | "flag";
@@ -11,6 +11,7 @@ export interface Issue {
     | "treadmill_not_allowed"
     | "treadmill_photo_required"
     | "photo_time_mismatch"
+    | "photo_time_missing"
     | "bad_times"
     | "in_future"
     | "logged_too_late"
@@ -22,6 +23,28 @@ export interface Issue {
     | "distance_mismatch";
   severity: IssueSeverity;
   message: string;
+}
+
+/** Runs typed in by hand at least this long wait for a reviewer; shorter ones count straight away. */
+export const LONG_HAND_ENTRY_M = 6 * METERS_PER_MILE;
+
+/**
+ * The issues worth a person's time: ones that could put miles on the board that weren't run
+ * or walked (a bike or car, a stretched route, a photo from another day). The rest (a slow
+ * walk, a lot of stopping, a short run typed in by hand) stay on the run as notes and count
+ * straight away; everyone can still see how each runner's miles were tracked.
+ */
+const REVIEW_CODES: ReadonlySet<Issue["code"]> = new Set([
+  "pace_too_fast",
+  "distance_mismatch",
+  "photo_time_mismatch",
+  "photo_time_missing",
+]);
+
+/** Whether a run should wait in the review queue. */
+export function needsReview(a: Pick<ActivityInput, "source" | "distanceM">, issues: Issue[]): boolean {
+  if (issues.some((i) => REVIEW_CODES.has(i.code))) return true;
+  return a.source === "manual" && a.distanceM >= LONG_HAND_ENTRY_M;
 }
 
 export interface Evaluation {
@@ -130,6 +153,11 @@ export function evaluateActivity(
   if (isTreadmill && isHandEntered(a) && rules.requireTreadmillPhoto && a.evidenceCount === 0) {
     reject("treadmill_photo_required", "Add a photo of the treadmill console.");
   }
+  // Screenshots and photos saved from a message lose the time they were taken, so they can't be
+  // checked against the run; a person looks instead.
+  if (isTreadmill && isHandEntered(a) && a.evidenceCount > 0 && !a.evidenceTakenAt) {
+    flag("photo_time_missing", "The photo doesn't say when it was taken.");
+  }
   if (isTreadmill && a.evidenceTakenAt) {
     const t = a.evidenceTakenAt.getTime();
     if (t < a.startedAt.getTime() - PHOTO_WINDOW_MS || t > a.endedAt.getTime() + PHOTO_WINDOW_MS) {
@@ -165,19 +193,19 @@ export function evaluateActivity(
   if (issues.some((i) => i.severity === "reject")) {
     return { status: "rejected", verification: "rejected", issues };
   }
-  const verification = baseVerification(a);
-  if (issues.length > 0 || verification === "photo") {
-    // Photo evidence always gets a human look; it still counts in the meantime.
+  if (needsReview(a, issues)) {
+    // It counts in the meantime.
     return { status: "flagged", verification: "pending", issues };
   }
-  return { status: "accepted", verification, issues };
+  return { status: "accepted", verification: baseVerification(a), issues };
 }
 
 const isHandEntered = (a: ActivityInput) => a.source === "manual" || a.source === "treadmill_manual";
 
 function baseVerification(a: ActivityInput): Verification {
   if (a.environment === "treadmill" && isHandEntered(a)) return "photo";
-  if (a.source === "manual") return "pending";
+  // Typed in by hand: nothing measured it, but nothing about it needs a person either.
+  if (a.source === "manual") return "device";
   if (a.source === "app_gps" || a.polyline) return "gps";
   return "device";
 }

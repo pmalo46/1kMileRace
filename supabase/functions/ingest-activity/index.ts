@@ -14,6 +14,7 @@ import {
   overtakePush,
   overtakes,
   ownMilestonePush,
+  reviewNeededPush,
   planIngest,
   type StandingLike,
 } from "@1k/core";
@@ -170,6 +171,24 @@ Deno.serve(async (req) => {
     .from("race_activities")
     .select("race_id, counted_distance_m, race:races(name)")
     .eq("activity_id", saved.id);
+
+  // Only runs that could put miles on the board that weren't run or walked wait for review
+  // (see needsReview), so each one goes to the organizers and marshals of the races it counts in.
+  if (plan.evaluation.status === "flagged") {
+    for (const c of counted ?? []) {
+      const { data: reviewers } = await admin
+        .from("race_members")
+        .select("user_id")
+        .match({ race_id: c.race_id, status: "active" })
+        .in("role", ["organizer", "marshal"])
+        .neq("user_id", user.id);
+      await sendPush(
+        admin,
+        (reviewers ?? []).map((r) => r.user_id as string),
+        reviewNeededPush(runner, activity.type, activity.distanceM, plan.evaluation.issues),
+      );
+    }
+  }
 
   // Let anyone this run carried the runner past know, so they can cheer it (and lace up).
   if (fresh && boardsBefore.length > 0) {

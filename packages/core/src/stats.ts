@@ -23,6 +23,20 @@ export interface StatActivity {
    */
   timed?: boolean;
   type?: "run" | "walk";
+  /** Where the activity came from (activities.source); groups it in the tracking breakdown. */
+  source?: string;
+}
+
+/** How a run's miles were measured, from most to least trustworthy. */
+export type TrackingMethod = "app" | "watch" | "treadmill" | "hand";
+export const TRACKING_METHODS: readonly TrackingMethod[] = ["app", "watch", "treadmill", "hand"];
+
+/** Recorded in the app, synced from a watch or fitness app, a treadmill run with a photo, or typed in by hand. */
+export function trackingMethodOf(source: string | undefined): TrackingMethod {
+  if (source === "app_gps") return "app";
+  if (source === "healthkit" || source === "health_connect" || source === "polar" || source === "file") return "watch";
+  if (source === "treadmill_manual") return "treadmill";
+  return "hand";
 }
 
 const isTimed = (a: StatActivity) => a.timed !== false;
@@ -161,6 +175,11 @@ export interface RaceStats {
 
   treadmillM: number;
   outdoorM: number;
+
+  /** Miles and runs by how they were measured, in TRACKING_METHODS order. */
+  tracking: { method: TrackingMethod; count: number; distanceM: number }[];
+  /** Share of miles measured by the app or a watch, 0–1. */
+  measuredShare: number;
 
   /** Total climb from activities that recorded it; null when none did. */
   climbM: number | null;
@@ -345,6 +364,12 @@ export function raceStats(activities: StatActivity[], race: RaceWindow, now: Dat
   const treadmillM = all.filter((a) => a.environment === "treadmill").reduce((s, a) => s + a.distanceM, 0);
   const climbed = all.filter((a) => a.elevationGainM != null);
 
+  const tracking = TRACKING_METHODS.map((method) => {
+    const these = all.filter((a) => trackingMethodOf(a.source) === method);
+    return { method, count: these.length, distanceM: these.reduce((s, a) => s + a.distanceM, 0) };
+  });
+  const measuredM = tracking.filter((t) => t.method === "app" || t.method === "watch").reduce((s, t) => s + t.distanceM, 0);
+
   return {
     count: all.length,
     distanceM,
@@ -370,6 +395,8 @@ export function raceStats(activities: StatActivity[], race: RaceWindow, now: Dat
     favoriteWeekday,
     treadmillM,
     outdoorM: distanceM - treadmillM,
+    tracking,
+    measuredShare: distanceM > 0 ? measuredM / distanceM : 0,
     climbM: climbed.length ? climbed.reduce((s, a) => s + a.elevationGainM!, 0) : null,
     aheadByM: paceStatus(distanceM, race, now).aheadByM,
   };

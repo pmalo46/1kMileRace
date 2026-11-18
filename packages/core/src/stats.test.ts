@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gaitOf, raceStats, type StatActivity } from "./stats.ts";
+import { gaitOf, raceStats, trackingMethodOf, type StatActivity } from "./stats.ts";
 import { milesToMeters } from "./units.ts";
 
 // The race starts on Thursday 1 October 2026; 20 October is a Tuesday in its fourth week.
@@ -49,6 +49,36 @@ describe("untimed runs", () => {
     expect(s.fastest!.distanceM).toBeCloseTo(milesToMeters(3));
     expect(s.weeks.at(-1)!.distanceM).toBeCloseTo(milesToMeters(6));
     expect(s.weeks.at(-1)!.movingTimeS).toBe(30 * 60);
+  });
+});
+
+describe("how the miles were tracked", () => {
+  it("groups runs by how they were measured, and gives the share a device measured", () => {
+    const s = raceStats(
+      [
+        act(now, 3, 10, { source: "app_gps" }),
+        act(now, 2, 10, { source: "healthkit" }),
+        act(now, 1, 10, { source: "health_connect" }),
+        act(now, 2, 10, { source: "treadmill_manual" }),
+        act(now, 2, 10, { source: "manual" }),
+      ],
+      race,
+      now,
+    );
+    expect(s.tracking.map((t) => [t.method, t.count])).toEqual([
+      ["app", 1],
+      ["watch", 2],
+      ["treadmill", 1],
+      ["hand", 1],
+    ]);
+    expect(s.tracking[1]!.distanceM).toBeCloseTo(milesToMeters(3));
+    expect(s.measuredShare).toBeCloseTo(0.6);
+  });
+
+  it("treats an unknown or missing source as typed in by hand", () => {
+    expect(trackingMethodOf(undefined)).toBe("hand");
+    expect(trackingMethodOf("polar")).toBe("watch");
+    expect(raceStats([], race, now).measuredShare).toBe(0);
   });
 });
 

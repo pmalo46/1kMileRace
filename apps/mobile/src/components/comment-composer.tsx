@@ -9,17 +9,24 @@ import { useTheme } from '@/theme/use-theme';
 
 import { Text } from './text';
 
-/** A box for writing a comment, with a GIF button, for the comments screen and the feed. */
+/** A box for writing a comment or chat message, with a GIF button. */
 export function CommentComposer({
   onPost,
   autoFocus,
   header,
+  placeholder = 'Add a comment',
+  maxLength = 1000,
+  mentionables = [],
 }: {
   /** Throws to keep the draft and say why it didn't post. */
   onPost: (body: string, gif: Gif | null) => Promise<void>;
   autoFocus?: boolean;
-  /** Shown above the box, e.g. who the reply is to. */
+  /** Shown above the box, e.g. whose post the comment is on. */
   header?: ReactNode;
+  placeholder?: string;
+  maxLength?: number;
+  /** Names offered after typing @, to mention someone. */
+  mentionables?: string[];
 }) {
   const { colors } = useTheme();
   const [draft, setDraft] = useState('');
@@ -27,6 +34,11 @@ export function CommentComposer({
   const [picking, setPicking] = useState(false);
   const [sending, setSending] = useState(false);
   const body = draft.trim();
+  // Typing "@an" offers names starting with "an"; tapping one fills it in.
+  const query = /(?:^|\s)@([^@\s]*)$/.exec(draft)?.[1];
+  const suggestions =
+    query === undefined ? [] : mentionables.filter((n) => n.toLowerCase().startsWith(query.toLowerCase())).slice(0, 4);
+  const mention = (name: string) => setDraft((d) => d.replace(/@([^@\s]*)$/, `@${name} `));
   const canPost = (!!body || !!gif) && !sending;
 
   const send = async () => {
@@ -45,6 +57,33 @@ export function CommentComposer({
   return (
     <View style={{ borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background }}>
       {header}
+      {suggestions.length > 0 && (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: Space.sm,
+            paddingHorizontal: Space.md,
+            paddingTop: Space.sm,
+          }}>
+          {suggestions.map((name) => (
+            <Pressable
+              key={name}
+              onPress={() => mention(name)}
+              accessibilityRole="button"
+              accessibilityLabel={`Mention ${name}`}
+              style={{
+                minHeight: 36,
+                justifyContent: 'center',
+                paddingHorizontal: Space.md,
+                borderRadius: Radius.pill,
+                backgroundColor: colors.surfaceAlt,
+              }}>
+              <Text style={{ fontWeight: '700' }}>@{name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {gif && (
         <View
           style={{
@@ -84,11 +123,11 @@ export function CommentComposer({
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="Add a comment"
+          placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
           autoFocus={autoFocus}
           multiline
-          maxLength={1000}
+          maxLength={maxLength}
           style={{
             flex: 1,
             backgroundColor: colors.surface,

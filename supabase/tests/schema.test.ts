@@ -194,7 +194,7 @@ describe("review", () => {
     const bad = await logRun(ann, "2026-03-02T12:00:00Z", 5, 3, "pending");
     expect((await standing(ann))!.counted_distance_m).toBeCloseTo(104 * MILE);
 
-    await db.as(org, `select review_activity($1, 'reject', 'Looks like a bike ride')`, [bad]);
+    await db.as(org, `select review_activity($1, $2, 'reject', 'Looks like a bike ride')`, [raceId, bad]);
 
     const s = await standing(ann);
     expect(s!.counted_distance_m).toBeCloseTo(99 * MILE);
@@ -213,15 +213,134 @@ describe("review", () => {
        returning id`,
       [ann, 3 * MILE],
     );
-    await db.as(org, `select review_activity($1, 'approve')`, [row!.id]);
+    await db.as(org, `select review_activity($1, $2, 'approve')`, [raceId, row!.id]);
     const [a] = await db.q<{ verification: string }>(`select verification from activities where id = $1`, [row!.id]);
     expect(a!.verification).toBe("photo");
   });
 
-  it("does not let participants review", async () => {
-    const id = await logRun(ann, "2026-03-01T12:00:00Z", 5);
-    await expect(db.as(bo, `select review_activity($1, 'reject')`, [id])).rejects.toThrow(/not a marshal/);
-    await expect(db.as(ann, `select review_activity($1, 'reject')`, [id])).rejects.toThrow(/own activity/);
+  it("does not let participants review, nor anyone review their own run or one already reviewed", async () => {
+    const id = await logRun(ann, "2026-03-01T12:00:00Z", 5, 10, "pending");
+    await expect(db.as(bo, `select review_activity($1, $2, 'reject')`, [raceId, id])).rejects.toThrow(/not allowed/);
+    const mine = await logRun(org, "2026-03-01T12:00:00Z", 5, 10, "pending");
+    await expect(db.as(org, `select review_activity($1, $2, 'approve')`, [raceId, mine])).rejects.toThrow(/own activity/);
+    const done = await logRun(bo, "2026-03-01T12:00:00Z", 5);
+    await expect(db.as(org, `select review_activity($1, $2, 'approve')`, [raceId, done])).rejects.toThrow(/already reviewed/);
+  });
+
+  it("lists waiting runs for organizers and marshals only, with the runner's usual pace", async () => {
+    await logRun(ann, "2026-03-01T12:00:00Z", 3, 10);
+    const fast = await logRun(ann, "2026-03-02T12:00:00Z", 3, 3, "pending");
+    await expect(db.as(bo, `select * from pending_reviews($1)`, [raceId])).rejects.toThrow(/not allowed/);
+    const rows = await db.as<{ activity_id: string; display_name: string; usual_pace_s: number }>(
+      org,
+      `select * from pending_reviews($1)`,
+      [raceId],
+    );
+    expect(rows.map((r) => [r.activity_id, r.display_name])).toEqual([[fast, "Ann"]]);
+    expect(rows[0]!.usual_pace_s).toBeCloseTo(600);
+
+    await db.as(org, `select set_member_role($1, $2, 'marshal')`, [raceId, bo]);
+    expect(await db.as(bo, `select * from pending_reviews($1)`, [raceId])).toHaveLength(1);
+  });
+
+  it("approves plain hand-entered runs in one go, leaving anything else unusual for a person", async () => {
+    const plain = await logRun(ann, "2026-03-01T12:00:00Z", 3, 10, "pending");
+    const odd = await logRun(bo, "2026-03-02T12:00:00Z", 3, 3, "pending");
+    await db.q(`update activities set source = 'manual', flags = '[{"code":"manual_entry","severity":"flag","message":"Entered by hand."}]' where id = $1`, [plain]);
+    await db.q(
+      `update activities set source = 'manual', flags = '[{"code":"manual_entry","severity":"flag","message":"x"},{"code":"pace_too_fast","severity":"flag","message":"y"}]' where id = $1`,
+      [odd],
+    );
+    const [res] = await db.as<{ approve_hand_entered: number }>(org, `select approve_hand_entered($1)`, [raceId]);
+    expect(res!.approve_hand_entered).toBe(1);
+    const verif = await db.q<{ id: string; verification: string }>(`select id, verification from activities where id in ($1, $2)`, [plain, odd]);
+    expect(Object.fromEntries(verif.map((v) => [v.id, v.verification]))).toEqual({ [plain]: "device", [odd]: "pending" });
+    expect(await db.q(`select 1 from activity_reviews where activity_id = $1 and decision = 'approve'`, [plain])).toHaveLength(1);
+  });
+});
+
+describe("race admin", () => {
+  const role = async (user: string) =>
+    (await db.q<{ role: string; status: string }>(`select role, status from race_members where race_id = $1 and user_id = $2`, [raceId, user]))[0];
+
+  it("lets organizers make marshals and remove runners, but never touch organizers or themselves", async () => {
+    await db.as(org, `select set_member_role($1, $2, 'marshal')`, [raceId, ann]);
+    expect((await role(ann))!.role).toBe("marshal");
+    await db.as(org, `select set_member_role($1, $2, 'participant')`, [raceId, ann]);
+    expect((await role(ann))!.role).toBe("participant");
+    await expect(db.as(org, `select set_member_role($1, $2, 'organizer')`, [raceId, ann])).rejects.toThrow(/participant or marshal/);
+    await expect(db.as(org, `select set_member_role($1, $2, 'marshal')`, [raceId, org])).rejects.toThrow(/own role/);
+
+    await db.as(org, `select remove_member($1, $2)`, [raceId, bo]);
+    expect((await role(bo))!.status).toBe("removed");
+    await expect(db.as(bo, `select join_race($1)`, [invite])).resolves.toBeDefined();
+    expect((await role(bo))!.status).toBe("removed");
+  });
+
+  it("keeps runners and marshals out of organizer tools", async () => {
+    await db.as(org, `select set_member_role($1, $2, 'marshal')`, [raceId, ann]);
+    for (const sql of [
+      `select set_member_role($1, '${bo}', 'marshal')`,
+      `select remove_member($1, '${bo}')`,
+      `select replace_invite_code($1)`,
+      `select update_race_details($1, 'Mine now')`,
+      `select post_announcement($1, 'Hi')`,
+    ]) {
+      await expect(db.as(ann, sql, [raceId])).rejects.toThrow(/not allowed/);
+    }
+    // The old direct-edit routes are closed.
+    await db.as(org, `update races set invite_code = 'aaaabbbb' where id = $1`, [raceId]);
+    await db.as(org, `update race_members set role = 'participant' where race_id = $1 and user_id = $2`, [raceId, ann]);
+    expect((await db.q<{ invite_code: string }>(`select invite_code from races where id = $1`, [raceId]))[0]!.invite_code).toBe(invite);
+    expect((await role(ann))!.role).toBe("marshal");
+  });
+
+  it("renames the race and replaces the invite code, and the old code stops working", async () => {
+    await db.as(org, `select update_race_details($1, '  Neighborhood 1K 2027 ', '')`, [raceId]);
+    const [code] = await db.as<{ replace_invite_code: string }>(org, `select replace_invite_code($1)`, [raceId]);
+    const [r] = await db.q<{ name: string; description: string | null; invite_code: string }>(
+      `select name, description, invite_code from races where id = $1`,
+      [raceId],
+    );
+    expect(r).toEqual({ name: "Neighborhood 1K 2027", description: null, invite_code: code!.replace_invite_code });
+    expect(r!.invite_code).not.toBe(invite);
+    await expect(db.as(outsider, `select join_race($1)`, [invite])).rejects.toThrow(/invalid invite code/);
+  });
+});
+
+describe("chat", () => {
+  it("lets members talk in their own race only, and organizers announce", async () => {
+    await db.as(ann, `insert into messages (race_id, user_id, body) values ($1, auth.uid(), 'Long run Saturday?')`, [raceId]);
+    await expect(
+      db.as(outsider, `insert into messages (race_id, user_id, body) values ($1, auth.uid(), 'hi')`, [raceId]),
+    ).rejects.toThrow(/row-level security/);
+    await expect(
+      db.as(ann, `insert into messages (race_id, user_id, kind, body) values ($1, auth.uid(), 'announcement', 'Me!')`, [raceId]),
+    ).rejects.toThrow(/row-level security/);
+    await db.as(org, `select post_announcement($1, 'Group run 8am at the park')`, [raceId]);
+
+    expect(await db.as(outsider, `select * from messages`)).toHaveLength(0);
+    const seen = await db.as<{ kind: string; body: string }>(bo, `select kind, body from messages order by created_at`);
+    expect(seen).toEqual([
+      { kind: "chat", body: "Long run Saturday?" },
+      { kind: "announcement", body: "Group run 8am at the park" },
+    ]);
+  });
+
+  it("lets people delete their own messages, and organizers delete anyone's", async () => {
+    await db.as(ann, `insert into messages (race_id, user_id, body) values ($1, auth.uid(), 'one')`, [raceId]);
+    await db.as(ann, `insert into messages (race_id, user_id, body) values ($1, auth.uid(), 'two')`, [raceId]);
+    await db.as(bo, `delete from messages where body = 'one'`);
+    expect(await db.q(`select 1 from messages`)).toHaveLength(2);
+    await db.as(org, `delete from messages where body = 'one'`);
+    await db.as(ann, `delete from messages where body = 'two'`);
+    expect(await db.q(`select 1 from messages`)).toHaveLength(0);
+  });
+
+  it("refuses empty messages", async () => {
+    await expect(db.as(ann, `insert into messages (race_id, user_id, body) values ($1, auth.uid(), '   ')`, [raceId])).rejects.toThrow(
+      /messages_not_empty/,
+    );
   });
 });
 
@@ -436,11 +555,11 @@ describe("evidence storage", () => {
     await expect(upload(ann, `${bo}/console.jpg`)).rejects.toThrow(/row-level security/);
   });
 
-  it("shows photos to their owner and the race's organizers, not other runners", async () => {
+  it("shows photos to everyone in the runner's race, and no one outside it", async () => {
     await upload(ann, `${ann}/console.jpg`);
     expect(await visible(ann)).toHaveLength(1);
     expect(await visible(org)).toHaveLength(1);
-    expect(await visible(bo)).toHaveLength(0);
+    expect(await visible(bo)).toHaveLength(1);
     expect(await visible(outsider)).toHaveLength(0);
   });
 });

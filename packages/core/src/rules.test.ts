@@ -95,12 +95,43 @@ describe("evaluateActivity", () => {
     );
   });
 
-  it("requires a console photo for treadmill runs and always sends them to review", () => {
+  it("requires a console photo for treadmill runs, which then count straight away", () => {
     const noPhoto = run({ source: "treadmill_manual", environment: "treadmill" });
     expect(evaluateActivity(noPhoto, DEFAULT_RACE_RULES, now).status).toBe("rejected");
 
-    const withPhoto = evaluateActivity({ ...noPhoto, evidenceCount: 1 }, DEFAULT_RACE_RULES, now);
-    expect(withPhoto).toEqual({ status: "flagged", verification: "pending", issues: [] });
+    const withPhoto = evaluateActivity(
+      { ...noPhoto, evidenceCount: 1, evidenceTakenAt: noPhoto.endedAt },
+      DEFAULT_RACE_RULES,
+      now,
+    );
+    expect(withPhoto).toEqual({ status: "accepted", verification: "photo", issues: [] });
+  });
+
+  it("sends a treadmill photo with no timestamp to a reviewer, since it can't be checked", () => {
+    const r = evaluateActivity(run({ source: "treadmill_manual", environment: "treadmill", evidenceCount: 1 }), DEFAULT_RACE_RULES, now);
+    expect([r.status, r.issues.map((i) => i.code)]).toEqual(["flagged", ["photo_time_missing"]]);
+  });
+
+  it("only queues runs that could put miles on the board that weren't run or walked", () => {
+    // A slow watch walk and a stop-and-go outing keep their notes but count straight away.
+    const slow = evaluateActivity(
+      run({ source: "health_connect", distanceM: milesToMeters(1.2), endedAt: new Date("2026-10-02T12:40:00Z"), movingTimeS: 40 * 60, elapsedTimeS: 40 * 60 }),
+      DEFAULT_RACE_RULES,
+      now,
+    );
+    expect([slow.status, slow.issues.map((i) => i.code)]).toEqual(["accepted", ["pace_too_slow"]]);
+    const stopping = evaluateActivity(run({ movingTimeS: 20 * 60, elapsedTimeS: 30 * 60 }), DEFAULT_RACE_RULES, now);
+    expect(stopping.status).toBe("accepted");
+
+    // Typed in by hand: short ones count, long ones wait for a reviewer.
+    const short = evaluateActivity(run({ source: "manual" }), DEFAULT_RACE_RULES, now);
+    expect([short.status, short.verification, short.issues.map((i) => i.code)]).toEqual(["accepted", "device", ["manual_entry"]]);
+    const long = evaluateActivity(
+      run({ source: "manual", distanceM: milesToMeters(6.2), endedAt: new Date("2026-10-02T13:00:00Z"), movingTimeS: 60 * 60, elapsedTimeS: 60 * 60 }),
+      DEFAULT_RACE_RULES,
+      now,
+    );
+    expect([long.status, long.verification]).toEqual(["flagged", "pending"]);
   });
 
   it("flags treadmill photos taken far from the workout time", () => {
