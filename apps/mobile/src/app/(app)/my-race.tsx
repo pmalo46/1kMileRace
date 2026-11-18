@@ -1,14 +1,16 @@
-import { finishPlan } from '@1k/core';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { finishPlan, formatMiles } from '@1k/core';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 
+import { AdminLink } from '@/components/admin-link';
 import { Card } from '@/components/card';
 import { FinishPlanner } from '@/components/finish-planner';
 import { RaceStatsView, goalMilesOf } from '@/components/race-stats';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
+import { canReview, usePendingReviews, useTurnedDown } from '@/lib/admin';
 import { useAuth } from '@/lib/auth';
 import { resetTour } from '@/lib/onboarding';
 import { useRunnerStats } from '@/lib/race-stats';
@@ -27,6 +29,15 @@ export default function MyRace() {
   // Nothing to plan once the goal is reached or the race is over.
   const planning = raceWindow && me && finishPlan(me.counted_distance_m, raceWindow, 1) !== null;
   const [refreshing, setRefreshing] = useState(false);
+  const reviewer = canReview(race);
+  const { runs: waiting, refresh: refreshWaiting } = usePendingReviews(race);
+  const { runs: turnedDown, refresh: refreshTurnedDown } = useTurnedDown(session?.user.id);
+  useFocusEffect(
+    useCallback(() => {
+      refreshWaiting();
+      refreshTurnedDown();
+    }, [refreshWaiting, refreshTurnedDown]),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -42,6 +53,7 @@ export default function MyRace() {
           My Race
         </Text>
       </View>
+      {reviewer && <AdminLink waiting={waiting?.length ?? 0} onPress={() => router.push('/admin')} />}
       {loaded && !race && (
         <Card>
           <Text variant="heading">Join a race to see your stats</Text>
@@ -52,6 +64,21 @@ export default function MyRace() {
         <Card>
           <Text variant="label">Finish plan</Text>
           <FinishPlanner totalM={me.counted_distance_m} race={raceWindow} runs={me.activity_count} />
+        </Card>
+      )}
+      {turnedDown.length > 0 && (
+        <Card>
+          <Text variant="label">Not counted</Text>
+          <Text variant="muted">An organizer looked at these and left them out. If one looks wrong, ask them about it.</Text>
+          {turnedDown.map((r) => (
+            <View key={r.id} style={{ gap: 2 }}>
+              <Text style={{ fontWeight: '700' }}>
+                {formatMiles(r.distance_m)} mi {r.type} ·{' '}
+                {new Date(r.started_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              </Text>
+              {r.note && <Text variant="muted">“{r.note}”</Text>}
+            </View>
+          ))}
         </Card>
       )}
       {race && stats && <RaceStatsView stats={stats} name="You" isMe goalMiles={goalMilesOf(race.goal_m)} />}

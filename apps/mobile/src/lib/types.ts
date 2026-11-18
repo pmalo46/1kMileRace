@@ -9,7 +9,11 @@ export interface Race {
   timezone: string;
   goal_m: number;
   invite_code: string;
+  /** The signed-in runner's role in this race. */
+  myRole?: MemberRole;
 }
+
+export type MemberRole = 'organizer' | 'marshal' | 'participant' | 'supporter';
 
 export interface Standing {
   race_id: string;

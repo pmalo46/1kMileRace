@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from './auth';
 import { supabase } from './supabase';
-import type { Race, Standing } from './types';
+import type { MemberRole, Race, Standing } from './types';
 
 /**
  * Several screens and components ask for the same race list or standings as they mount or
@@ -34,12 +34,14 @@ export function useMyRaces() {
     if (!session) return;
     const userId = session.user.id;
     const { data, error } = await shared(`races:${userId}`, async () =>
-      supabase.from('race_members').select('race:races(*)').eq('user_id', userId).eq('status', 'active'),
+      supabase.from('race_members').select('role, race:races(*)').eq('user_id', userId).eq('status', 'active'),
     );
     if (error) return setError(error.message);
     const list = (data ?? [])
-      .map((row) => row.race as unknown as Race | null)
-      .filter((r): r is Race => r !== null)
+      .flatMap((row): Race[] => {
+        const race = row.race as unknown as Race | null;
+        return race ? [{ ...race, myRole: row.role as MemberRole }] : [];
+      })
       .sort((a, b) => b.starts_at.localeCompare(a.starts_at));
     setRaces(list);
   }, [session]);

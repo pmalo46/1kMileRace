@@ -26,8 +26,14 @@ const feedItems = () =>
 const COMMENT =
   'id, feed_item_id, user_id, body, gif_id, gif_url, gif_width, gif_height, created_at, author:profiles(display_name)';
 
-/** Asks the server to push-notify the people a new cheer or comment concerns. Best effort. */
-function notify(body: { kind: 'cheer'; feedItemId: string; emoji: string } | { kind: 'comment'; commentId: string }) {
+type NotifyBody =
+  | { kind: 'cheer'; feedItemId: string; emoji: string }
+  | { kind: 'comment'; commentId: string }
+  | { kind: 'review'; activityId: string }
+  | { kind: 'message'; messageId: string };
+
+/** Asks the server to push-notify the people something just done concerns. Best effort. */
+export function notify(body: NotifyBody) {
   supabase.functions.invoke('notify', { body }).catch(() => undefined);
 }
 
