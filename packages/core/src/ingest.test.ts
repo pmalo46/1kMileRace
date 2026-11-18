@@ -93,7 +93,9 @@ describe("planIngest", () => {
   });
 
   it("accepts a treadmill run with a photo as photo-verified, with no issues to show", () => {
-    const p = plan(input({ source: "treadmill_manual", environment: "treadmill", evidenceCount: 1 }));
+    const p = plan(
+      input({ source: "treadmill_manual", environment: "treadmill", evidenceCount: 1, evidenceTakenAt: new Date("2026-10-02T12:31:00Z") }),
+    );
     expect(p.kind).toBe("insert");
     if (p.kind !== "insert") return;
     expect(p.row.verification).toBe("photo");

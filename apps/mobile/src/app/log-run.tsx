@@ -97,7 +97,15 @@ export default function LogRun() {
     }
     const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.6, exif: true };
     const res = camera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
-    if (!res.canceled && res.assets[0]) setPhoto(res.assets[0]);
+    const picked = !res.canceled ? res.assets[0] : undefined;
+    if (!picked) return;
+    setPhoto(picked);
+    // The run finished around when the console was photographed, so start from that. A photo
+    // from outside the logging window leaves the time alone; the rules will say why.
+    const taken = photoTakenAt(picked);
+    const latest = new Date();
+    const oldest = new Date(latest.getTime() - DEFAULT_RACE_RULES.lateLogDays * SECONDS_PER_DAY * 1000);
+    if (taken && taken >= oldest && taken <= latest) setFinishedAt(taken);
   };
 
   const submit = async () => {
@@ -175,7 +183,19 @@ export default function LogRun() {
         {treadmill && (
           <Card>
             <Text variant="label">Treadmill photo</Text>
-            <Text variant="muted">A photo of the console showing distance and time. Only organizers see it.</Text>
+            <Text variant="muted">
+              A photo of the console showing distance and time, taken when you finish. It shows on your post, so
+              everyone in your race can see it.
+            </Text>
+            {photo && (
+              <Text variant="muted" size={14}>
+                {takenAt
+                  ? `Taken ${takenAt.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.${
+                      takenAt >= earliest && takenAt <= now ? ' Finished is set to match.' : ''
+                    }`
+                  : "This photo doesn't say when it was taken (screenshots and saved photos often don't), so an organizer or marshal will take a look."}
+              </Text>
+            )}
             {photo && (
               <Image
                 source={{ uri: photo.uri }}

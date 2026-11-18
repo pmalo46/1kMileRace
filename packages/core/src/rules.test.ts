@@ -99,8 +99,17 @@ describe("evaluateActivity", () => {
     const noPhoto = run({ source: "treadmill_manual", environment: "treadmill" });
     expect(evaluateActivity(noPhoto, DEFAULT_RACE_RULES, now).status).toBe("rejected");
 
-    const withPhoto = evaluateActivity({ ...noPhoto, evidenceCount: 1 }, DEFAULT_RACE_RULES, now);
+    const withPhoto = evaluateActivity(
+      { ...noPhoto, evidenceCount: 1, evidenceTakenAt: noPhoto.endedAt },
+      DEFAULT_RACE_RULES,
+      now,
+    );
     expect(withPhoto).toEqual({ status: "accepted", verification: "photo", issues: [] });
+  });
+
+  it("sends a treadmill photo with no timestamp to a reviewer, since it can't be checked", () => {
+    const r = evaluateActivity(run({ source: "treadmill_manual", environment: "treadmill", evidenceCount: 1 }), DEFAULT_RACE_RULES, now);
+    expect([r.status, r.issues.map((i) => i.code)]).toEqual(["flagged", ["photo_time_missing"]]);
   });
 
   it("only queues runs that could put miles on the board that weren't run or walked", () => {

@@ -1,5 +1,5 @@
 import type { Gif } from '@1k/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { supabase } from './supabase';
 import type { Comment, FeedItem } from './types';
@@ -12,7 +12,7 @@ export const CHEER_EMOJIS = ['🔥', '👏', '💪', '🎉'] as const;
 
 const FEED_ITEM =
   'id, type, actor_id, payload, created_at, actor:profiles!feed_items_actor_id_fkey(display_name, avatar_url), ' +
-  'activity:activities(type, environment, distance_m, moving_time_s, time_recorded, source, flags), cheers(user_id, emoji), comments(count), ' +
+  'activity:activities(type, environment, distance_m, moving_time_s, time_recorded, source, flags, evidence:activity_evidence(storage_path)), cheers(user_id, emoji), comments(count), ' +
   'latest:comments(user_id, body, gif_url, author:profiles(display_name))';
 
 /** Feed items with their newest comment as `latest`. */
@@ -45,6 +45,8 @@ const topic = (name: string) => `${name}:${Math.random().toString(36).slice(2)}`
 /** The newest things that happened in a race, live: runs, milestones, finishes, and people joining. */
 export function useFeed(raceId: string | undefined) {
   const [items, setItems] = useState<FeedItem[] | null>(null);
+  // Signed links to treadmill photos, by storage path, so a refresh doesn't sign them again.
+  const photoUrls = useRef(new Map<string, string>());
 
   const refresh = useCallback(async () => {
     if (!raceId) return;
@@ -52,7 +54,21 @@ export function useFeed(raceId: string | undefined) {
       .eq('race_id', raceId)
       .order('created_at', { ascending: false })
       .limit(50);
-    setItems((data as unknown as FeedItem[] | null) ?? []);
+    const list = (data as unknown as FeedItem[] | null) ?? [];
+    const unsigned = list
+      .map((i) => i.activity?.evidence?.[0]?.storage_path)
+      .filter((p): p is string => !!p && !photoUrls.current.has(p));
+    if (unsigned.length > 0) {
+      const { data: signed } = await supabase.storage.from('evidence').createSignedUrls(unsigned, 24 * 60 * 60);
+      for (const s of signed ?? []) if (s.path && s.signedUrl) photoUrls.current.set(s.path, s.signedUrl);
+    }
+    setItems(
+      list.map((i) => {
+        const path = i.activity?.evidence?.[0]?.storage_path;
+        const url = path ? photoUrls.current.get(path) : undefined;
+        return url ? { ...i, photoUrl: url } : i;
+      }),
+    );
   }, [raceId]);
 
   useEffect(() => {

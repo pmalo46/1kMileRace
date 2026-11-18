@@ -555,11 +555,11 @@ describe("evidence storage", () => {
     await expect(upload(ann, `${bo}/console.jpg`)).rejects.toThrow(/row-level security/);
   });
 
-  it("shows photos to their owner and the race's organizers, not other runners", async () => {
+  it("shows photos to everyone in the runner's race, and no one outside it", async () => {
     await upload(ann, `${ann}/console.jpg`);
     expect(await visible(ann)).toHaveLength(1);
     expect(await visible(org)).toHaveLength(1);
-    expect(await visible(bo)).toHaveLength(0);
+    expect(await visible(bo)).toHaveLength(1);
     expect(await visible(outsider)).toHaveLength(0);
   });
 });

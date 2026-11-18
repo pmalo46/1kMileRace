@@ -11,6 +11,7 @@ export interface Issue {
     | "treadmill_not_allowed"
     | "treadmill_photo_required"
     | "photo_time_mismatch"
+    | "photo_time_missing"
     | "bad_times"
     | "in_future"
     | "logged_too_late"
@@ -33,7 +34,12 @@ export const LONG_HAND_ENTRY_M = 6 * METERS_PER_MILE;
  * walk, a lot of stopping, a short run typed in by hand) stay on the run as notes and count
  * straight away; everyone can still see how each runner's miles were tracked.
  */
-const REVIEW_CODES: ReadonlySet<Issue["code"]> = new Set(["pace_too_fast", "distance_mismatch", "photo_time_mismatch"]);
+const REVIEW_CODES: ReadonlySet<Issue["code"]> = new Set([
+  "pace_too_fast",
+  "distance_mismatch",
+  "photo_time_mismatch",
+  "photo_time_missing",
+]);
 
 /** Whether a run should wait in the review queue. */
 export function needsReview(a: Pick<ActivityInput, "source" | "distanceM">, issues: Issue[]): boolean {
@@ -146,6 +152,11 @@ export function evaluateActivity(
   // A watch's own record of a treadmill run stands in for the console photo.
   if (isTreadmill && isHandEntered(a) && rules.requireTreadmillPhoto && a.evidenceCount === 0) {
     reject("treadmill_photo_required", "Add a photo of the treadmill console.");
+  }
+  // Screenshots and photos saved from a message lose the time they were taken, so they can't be
+  // checked against the run; a person looks instead.
+  if (isTreadmill && isHandEntered(a) && a.evidenceCount > 0 && !a.evidenceTakenAt) {
+    flag("photo_time_missing", "The photo doesn't say when it was taken.");
   }
   if (isTreadmill && a.evidenceTakenAt) {
     const t = a.evidenceTakenAt.getTime();

@@ -48,7 +48,11 @@ export interface FeedItem {
     source?: string;
     /** Notes the rules engine left, e.g. pace_too_slow. */
     flags?: { code: string }[];
+    /** A treadmill run's console photo, in the private evidence bucket. */
+    evidence?: { storage_path: string }[];
   } | null;
+  /** A short-lived link to the treadmill photo, when the run has one. */
+  photoUrl?: string;
   cheers: { user_id: string; emoji: string }[];
   comments: { count: number }[];
   /** The newest comment, if any. */

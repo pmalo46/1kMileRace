@@ -1,5 +1,6 @@
 import { milestoneQuote } from '@1k/core';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Pressable, SectionList, StyleSheet, View } from 'react-native';
@@ -274,6 +275,15 @@ function PostRow({
       </Pressable>
       <View style={{ marginLeft: INDENT, gap: Space.sm }}>
         {celebrating && item.payload.miles != null && <Quote quote={milestoneQuote(item.payload.miles)} size={16} />}
+        {item.photoUrl && (
+          <Pressable onPress={() => openComments(item)} accessibilityRole="imagebutton" accessibilityLabel="Treadmill photo">
+            <Image
+              source={{ uri: item.photoUrl }}
+              style={{ width: 180, aspectRatio: 3 / 4, borderRadius: Radius.md, backgroundColor: colors.surfaceAlt }}
+              contentFit="cover"
+            />
+          </Pressable>
+        )}
         {latest && (
           <Pressable onPress={() => openComments(item)} accessibilityRole="link" style={{ gap: 2 }}>
             <Text size={15} numberOfLines={2}>
