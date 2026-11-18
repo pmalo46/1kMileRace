@@ -104,7 +104,15 @@ export default function Admin() {
 
 const isPlainHandEntry = (r: PendingRun) => r.source === 'manual' && r.flags.every((f) => f.code === 'manual_entry');
 
-function ReviewQueue({ raceId, runs, onChanged }: { raceId: string; runs: PendingRun[] | null; onChanged: () => void }) {
+function ReviewQueue({
+  raceId,
+  runs,
+  onChanged,
+}: {
+  raceId: string;
+  runs: PendingRun[] | null;
+  onChanged: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   if (!runs) return <ActivityIndicator style={{ marginTop: Space.lg }} />;
   if (runs.length === 0) {
@@ -134,8 +142,8 @@ function ReviewQueue({ raceId, runs, onChanged }: { raceId: string; runs: Pendin
   return (
     <View style={{ gap: Space.md }}>
       <Text variant="muted">
-        These runs count while they wait. Count it keeps them; Don&apos;t count it takes the miles back off and tells the
-        runner why.
+        These runs count while they wait. Count it keeps them; Don&apos;t count it takes the miles back off and tells
+        the runner why.
       </Text>
       {plain > 0 && (
         <Button
@@ -322,7 +330,9 @@ function Members({ raceId }: { raceId: string }) {
                     title={m.role === 'marshal' ? 'Make runner' : 'Make marshal'}
                     variant="secondary"
                     onPress={() =>
-                      act(m.user_id, () => setMemberRole(raceId, m.user_id, m.role === 'marshal' ? 'participant' : 'marshal'))
+                      act(m.user_id, () =>
+                        setMemberRole(raceId, m.user_id, m.role === 'marshal' ? 'participant' : 'marshal'),
+                      )
                     }
                   />
                 </View>
@@ -377,18 +387,22 @@ function RaceSettings({
     });
 
   const confirmReplace = () =>
-    Alert.alert('Replace the invite code?', 'Links and codes you’ve already shared stop working. Everyone already in stays in.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Replace',
-        style: 'destructive',
-        onPress: () =>
-          run('code', async () => {
-            setCode(await replaceInviteCode(raceId));
-            onChanged();
-          }),
-      },
-    ]);
+    Alert.alert(
+      'Replace the invite code?',
+      'Links and codes you’ve already shared stop working. Everyone already in stays in.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Replace',
+          style: 'destructive',
+          onPress: () =>
+            run('code', async () => {
+              setCode(await replaceInviteCode(raceId));
+              onChanged();
+            }),
+        },
+      ],
+    );
 
   const announce = () =>
     run('announce', async () => {
@@ -411,7 +425,12 @@ function RaceSettings({
           maxLength={2000}
           style={{ minHeight: 88, textAlignVertical: 'top', paddingTop: Space.sm }}
         />
-        <Button title="Send to everyone" onPress={announce} loading={busy === 'announce'} disabled={!announcement.trim()} />
+        <Button
+          title="Send to everyone"
+          onPress={announce}
+          loading={busy === 'announce'}
+          disabled={!announcement.trim()}
+        />
       </Card>
 
       <Card>
@@ -425,9 +444,9 @@ function RaceSettings({
               title="Share"
               variant="secondary"
               onPress={() =>
-                Share.share({ message: `Join ${savedName} on 1K Mile Race.\n${inviteLink(code)}\nOr use the code ${formatInviteCode(code)}` }).catch(
-                  () => undefined,
-                )
+                Share.share({
+                  message: `Join ${savedName} on 1K Mile Race.\n${inviteLink(code)}\nOr use the code ${formatInviteCode(code)}`,
+                }).catch(() => undefined)
               }
             />
           </View>
@@ -450,7 +469,8 @@ function RaceSettings({
           style={{ minHeight: 88, textAlignVertical: 'top', paddingTop: Space.sm }}
         />
         <Text variant="muted" size={14}>
-          The start date and the 1,000-mile goal stay as the race was set up, so nobody&apos;s standing shifts under them.
+          The start date and the 1,000-mile goal stay as the race was set up, so nobody&apos;s standing shifts under
+          them.
         </Text>
         <Button title="Save" onPress={saveDetails} loading={busy === 'details'} disabled={!changed || !name.trim()} />
       </Card>

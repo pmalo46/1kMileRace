@@ -1,18 +1,22 @@
 import { milestoneQuote } from '@1k/core';
 import * as Haptics from 'expo-haptics';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Pressable, SectionList, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import EmojiPicker from 'rn-emoji-keyboard';
 
+import { Announcement } from '@/components/announcement';
+import { Chat } from '@/components/chat';
 import { CommentComposer } from '@/components/comment-composer';
 import { FeedStory } from '@/components/feed-story';
 import { Quote } from '@/components/quote';
+import { Segmented } from '@/components/segmented';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import { useAuth } from '@/lib/auth';
+import { useLatestAnnouncement } from '@/lib/chat';
 import { CHEER, CHEER_EMOJIS, byDay, postComment, timeAgo, useFeed } from '@/lib/feed';
 import type { FeedItem } from '@/lib/types';
 import { Radius, Space } from '@/theme/tokens';
@@ -40,6 +44,13 @@ export default function Feed() {
   const [trayFor, setTrayFor] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<FeedItem | null>(null);
   const sections = useMemo(() => byDay(items ?? []), [items]);
+  // A mention or announcement notification opens straight onto Chat.
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<'activity' | 'chat'>(params.tab === 'chat' ? 'chat' : 'activity');
+  useEffect(() => {
+    if (params.tab === 'chat') setTab('chat');
+  }, [params.tab]);
+  const announcement = useLatestAnnouncement(race?.id);
 
   const cheer = (item: FeedItem, emoji: string) => {
     if (!userId) return;
@@ -76,60 +87,87 @@ export default function Feed() {
           <Text variant="heading" size={28}>
             Feed
           </Text>
+          {race && (
+            <View style={{ marginTop: Space.sm }}>
+              <Segmented
+                options={[
+                  { value: 'activity', label: 'Activity' },
+                  { value: 'chat', label: 'Chat' },
+                ]}
+                value={tab}
+                onChange={(t) => {
+                  setReplyTo(null);
+                  setTab(t);
+                }}
+              />
+            </View>
+          )}
+          {race && tab === 'chat' && announcement && (
+            <View style={{ marginTop: Space.sm }}>
+              <Announcement message={announcement} />
+            </View>
+          )}
         </View>
-        <SectionList
-          sections={sections}
-          keyExtractor={(i) => i.id}
-          stickySectionHeadersEnabled={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: Space.md, paddingBottom: Space.xxl * 2 }}
-          onRefresh={refresh}
-          refreshing={false}
-          renderSectionHeader={({ section }) => (
-            <Text variant="label" style={{ paddingTop: Space.md, paddingBottom: Space.xs }}>
-              {section.title}
-            </Text>
-          )}
-          ItemSeparatorComponent={() => (
-            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: INDENT }} />
-          )}
-          renderItem={({ item, section }) => {
-            const props = {
-              item,
-              userId,
-              time: section.title === 'Today' ? timeAgo(item.created_at) : clockTime(item.created_at),
-              trayOpen: trayFor === item.id,
-              onCheer: (emoji: string) => {
-                // A fresh cheer offers the other emojis; taking it back puts them away.
-                if (emoji === CHEER) setTrayFor(gave(item, CHEER) ? null : item.id);
-                cheer(item, emoji);
-              },
-              onQuickCheer: (emoji: string) => {
-                setTrayFor(null);
-                switchCheer(item, emoji);
-              },
-              onPickEmoji: () => {
-                setTrayFor(null);
-                setPickingFor(item);
-              },
-            };
-            return item.type === 'joined' ? (
-              <JoinedRow {...props} />
-            ) : (
-              <PostRow {...props} replying={replyTo?.id === item.id} onReply={() => setReplyTo(item)} />
-            );
-          }}
-          ListEmptyComponent={
-            <Text variant="muted" style={{ textAlign: 'center', marginTop: Space.xl }}>
-              {loaded && !race
-                ? 'Join a race to see its feed'
-                : items
-                  ? 'No activity yet'
-                  : ' '}
-            </Text>
-          }
-        />
-        {replyTo && userId && (
+        {race && userId && tab === 'chat' ? (
+          <Chat race={race} userId={userId} />
+        ) : (
+          <SectionList
+            sections={sections}
+            keyExtractor={(i) => i.id}
+            stickySectionHeadersEnabled={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: Space.md, paddingBottom: Space.xxl * 2 }}
+            ListHeaderComponent={
+              announcement ? (
+                <View style={{ paddingTop: Space.sm }}>
+                  <Announcement message={announcement} />
+                </View>
+              ) : null
+            }
+            onRefresh={refresh}
+            refreshing={false}
+            renderSectionHeader={({ section }) => (
+              <Text variant="label" style={{ paddingTop: Space.md, paddingBottom: Space.xs }}>
+                {section.title}
+              </Text>
+            )}
+            ItemSeparatorComponent={() => (
+              <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: INDENT }} />
+            )}
+            renderItem={({ item, section }) => {
+              const props = {
+                item,
+                userId,
+                time: section.title === 'Today' ? timeAgo(item.created_at) : clockTime(item.created_at),
+                trayOpen: trayFor === item.id,
+                onCheer: (emoji: string) => {
+                  // A fresh cheer offers the other emojis; taking it back puts them away.
+                  if (emoji === CHEER) setTrayFor(gave(item, CHEER) ? null : item.id);
+                  cheer(item, emoji);
+                },
+                onQuickCheer: (emoji: string) => {
+                  setTrayFor(null);
+                  switchCheer(item, emoji);
+                },
+                onPickEmoji: () => {
+                  setTrayFor(null);
+                  setPickingFor(item);
+                },
+              };
+              return item.type === 'joined' ? (
+                <JoinedRow {...props} />
+              ) : (
+                <PostRow {...props} replying={replyTo?.id === item.id} onReply={() => setReplyTo(item)} />
+              );
+            }}
+            ListEmptyComponent={
+              <Text variant="muted" style={{ textAlign: 'center', marginTop: Space.xl }}>
+                {loaded && !race ? 'Join a race to see its feed' : items ? 'No activity yet' : ' '}
+              </Text>
+            }
+          />
+        )}
+        {tab === 'activity' && replyTo && userId && (
           <CommentComposer
             key={replyTo.id}
             autoFocus
@@ -206,7 +244,14 @@ interface RowProps {
 }
 
 /** A run, milestone, or finish: the story, its newest comment, and one-tap cheering. */
-function PostRow({ item, userId, time, replying, onReply, ...cheers }: RowProps & { replying: boolean; onReply: () => void }) {
+function PostRow({
+  item,
+  userId,
+  time,
+  replying,
+  onReply,
+  ...cheers
+}: RowProps & { replying: boolean; onReply: () => void }) {
   const { colors } = useTheme();
   const commentCount = item.comments[0]?.count ?? 0;
   const latest = item.latest[0];
@@ -269,7 +314,10 @@ function JoinedRow({ item, userId, time, ...cheers }: RowProps) {
   return (
     <View style={{ paddingVertical: Space.sm, gap: Space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
-        <Pressable onPress={() => openComments(item)} accessibilityRole="link" style={{ flex: 1, flexDirection: 'row', gap: Space.md }}>
+        <Pressable
+          onPress={() => openComments(item)}
+          accessibilityRole="link"
+          style={{ flex: 1, flexDirection: 'row', gap: Space.md }}>
           <Text size={20} style={{ width: 40, textAlign: 'center' }} accessible={false}>
             👋
           </Text>
@@ -336,7 +384,11 @@ function Cheers({ item, userId, trayOpen, onCheer }: Pick<RowProps, 'item' | 'us
 }
 
 /** Right after a cheer: other emojis to switch it for, and + for any emoji. */
-function QuickCheers({ trayOpen, onQuickCheer, onPickEmoji }: Pick<RowProps, 'trayOpen' | 'onQuickCheer' | 'onPickEmoji'>) {
+function QuickCheers({
+  trayOpen,
+  onQuickCheer,
+  onPickEmoji,
+}: Pick<RowProps, 'trayOpen' | 'onQuickCheer' | 'onPickEmoji'>) {
   const { colors } = useTheme();
   if (!trayOpen) return null;
   const pill = {
@@ -348,7 +400,9 @@ function QuickCheers({ trayOpen, onQuickCheer, onPickEmoji }: Pick<RowProps, 'tr
     backgroundColor: colors.surfaceAlt,
   } as const;
   return (
-    <Animated.View entering={FadeIn.duration(150)} style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
+    <Animated.View
+      entering={FadeIn.duration(150)}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: Space.sm }}>
       <Text variant="muted" size={14} style={{ fontWeight: '700' }}>
         Or
       </Text>
@@ -362,7 +416,11 @@ function QuickCheers({ trayOpen, onQuickCheer, onPickEmoji }: Pick<RowProps, 'tr
           <Text size={20}>{emoji}</Text>
         </Pressable>
       ))}
-      <Pressable onPress={onPickEmoji} accessibilityRole="button" accessibilityLabel="Cheer with another emoji" style={pill}>
+      <Pressable
+        onPress={onPickEmoji}
+        accessibilityRole="button"
+        accessibilityLabel="Cheer with another emoji"
+        style={pill}>
         <Text size={18} style={{ fontWeight: '800', color: colors.textMuted }}>
           +
         </Text>

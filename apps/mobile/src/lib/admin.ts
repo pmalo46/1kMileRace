@@ -148,7 +148,10 @@ export function useTurnedDown(userId: string | undefined) {
     setRuns(
       ((data as unknown as Row[] | null) ?? []).map(({ reviews, ...a }) => ({
         ...a,
-        note: [...reviews].filter((r) => r.decision === 'reject').sort((x, y) => y.created_at.localeCompare(x.created_at))[0]?.note ?? null,
+        note:
+          [...reviews]
+            .filter((r) => r.decision === 'reject')
+            .sort((x, y) => y.created_at.localeCompare(x.created_at))[0]?.note ?? null,
       })),
     );
   }, [userId]);

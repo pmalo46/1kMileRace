@@ -164,7 +164,7 @@ export function ruleSections(race?: { goal_m: number; starts_at: string; ends_at
       lines: [
         'Best: tap Start a run and record it in the app. GPS measures the route, and the run counts right away.',
         'Watch runs and walks sync from Apple Health (iPhone) or Health Connect (Android): the app checks the last week each time you open it. Workouts typed into those apps by hand are skipped; add those here instead.',
-        'Runs added by hand count too, but the organizer takes a second look.',
+        'Runs added by hand count too, but an organizer or marshal takes a second look.',
         rules.requireTreadmillPhoto
           ? 'Treadmill runs added by hand need a photo of the treadmill screen showing distance and time, taken around the time of the run. Only organizers see it. A treadmill run recorded by a watch needs no photo.'
           : '',
@@ -199,8 +199,8 @@ export function ruleSections(race?: { goal_m: number; starts_at: string; ends_at
     {
       heading: 'Reviews',
       lines: [
-        `A run faster than ${formatPace(rules.fastestPaceSecPerMile)} or slower than ${formatPace(rules.slowestPaceSecPerMile)} a mile, one that was stopped for more than ${Math.round((1 - rules.minMovingRatio) * 100)}% of the time, or one added by hand gets a second look from the organizer.`,
-        "It counts while it waits. If the organizer turns it down, its miles come off your total, along with any milestones it earned.",
+        `A run faster than ${formatPace(rules.fastestPaceSecPerMile)} or slower than ${formatPace(rules.slowestPaceSecPerMile)} a mile, one that was stopped for more than ${Math.round((1 - rules.minMovingRatio) * 100)}% of the time, or one added by hand gets a second look from an organizer or marshal.`,
+        "It counts while it waits. If it's turned down, its miles come off your total, along with any milestones it earned, and you'll see why on My Race.",
         'Runs recorded with fake GPS are turned away.',
         "None of it is an accusation. It keeps the race honest for everybody.",
       ],
