@@ -1,6 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from 'react';
 
+import { unregisterForPush } from './notifications';
+import { currentRecording, unsyncedRecordings } from './recorder';
 import { SESSION_STORAGE_KEY, supabase } from './supabase';
 
 /**
@@ -48,3 +50,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
 }
 
 export const useAuth = () => useContext(AuthContext);
+
+/**
+ * Why signing out has to wait. Recordings on the phone don't say whose they are, so one that
+ * hasn't uploaded yet would be saved to whoever signs in next.
+ */
+export function signOutBlocker(): 'recording' | 'uploading' | null {
+  if (currentRecording()) return 'recording';
+  if (unsyncedRecordings().length > 0) return 'uploading';
+  return null;
+}
+
+/** Signs out on this phone only; other devices stay signed in. */
+export async function signOut(): Promise<void> {
+  // Capped so a slow token lookup never leaves the button doing nothing.
+  await Promise.race([unregisterForPush(), new Promise((resolve) => setTimeout(resolve, 2000))]);
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+  if (error) throw error;
+}
