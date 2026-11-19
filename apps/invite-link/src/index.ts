@@ -41,6 +41,8 @@ export default {
     const url = new URL(request.url);
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', { status: 405 });
 
+    if (url.pathname === APK_PATH) return androidApp(request, env);
+
     const match = /^\/join\/([A-Za-z0-9-]{4,40})\/?$/.exec(url.pathname);
     if (!match) return page(home(), 404);
 
@@ -49,6 +51,34 @@ export default {
     return page(invite(code, preview, phoneOf(request), env), preview ? 200 : 404);
   },
 } satisfies ExportedHandler<Env>;
+
+/**
+ * The Android app, served from this address rather than linked straight to EAS. EAS hands
+ * out a download address that expires after 15 minutes and labels the file as unknown data;
+ * some browsers (Brave, for one) download all of it and then won't save it. Passed through
+ * here it's labelled as an Android app, has a plain file name, and a resumed download asks
+ * this address again, so it never expires.
+ */
+const APK_PATH = '/android.apk';
+
+async function androidApp(request: Request, env: Env): Promise<Response> {
+  const source = httpsOrNull(env.ANDROID_APP_URL);
+  if (!source) return page(home(), 404);
+  const range = request.headers.get('range');
+  const upstream = await fetch(source, { method: request.method, headers: range ? { range } : {} });
+  if (!upstream.ok) return new Response('The download isn’t available right now. Try again in a minute.', { status: 502 });
+  const headers = new Headers({
+    'content-type': 'application/vnd.android.package-archive',
+    'content-disposition': 'attachment; filename="1K-Mile-Race.apk"',
+    'accept-ranges': 'bytes',
+    'cache-control': 'no-store',
+  });
+  for (const h of ['content-length', 'content-range', 'last-modified', 'etag']) {
+    const v = upstream.headers.get(h);
+    if (v) headers.set(h, v);
+  }
+  return new Response(upstream.body, { status: upstream.status, headers });
+}
 
 async function lookUp(env: Env, code: string): Promise<Preview | null> {
   try {
@@ -99,8 +129,8 @@ function getTheApp(phone: Phone, organizer: string, env: Env): string {
   const askFor = (what: string) => `ask ${esc(organizer)} for ${what}`;
 
   const androidPart = android
-    ? `<a class="button secondary" href="${esc(android)}">Download for Android</a>
-       <p class="muted">Android will ask you to allow the install, since it isn&apos;t from the Play Store. ${then}</p>`
+    ? `<a class="button secondary" href="${APK_PATH}" download="1K-Mile-Race.apk">Download for Android</a>
+       <p class="muted">Android will ask you to allow the install, since it isn&apos;t from the Play Store. If the download finishes but doesn&apos;t save, open this page in Chrome and try again. ${then}</p>`
     : `<p class="muted">On Android, ${askFor('the download link')}. ${then}</p>`;
   const iosPart = ios
     ? `<a class="button secondary" href="${esc(ios)}">Get it on iPhone</a>
