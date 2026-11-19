@@ -59,7 +59,7 @@
         {
           "photosPermission": "Choose a photo of the treadmill console to back up the miles you log.",
           "cameraPermission": "Take a photo of the treadmill console to back up the miles you log.",
-          "microphonePermission": false
+          "microphonePermission": "1K Mile Race never records audio. Treadmill photos are still photos only."
         }
       ],
       [
@@ -71,7 +71,7 @@
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
           "locationAlwaysPermission": "Allow location all the time so 1K Mile Race keeps measuring your run while your screen is locked.",
-          "motionUsagePermission": false
+          "motionUsagePermission": "1K Mile Race doesn't use motion data. Your runs and walks are measured with GPS."
         }
       ],
       "@react-native-community/datetimepicker",
