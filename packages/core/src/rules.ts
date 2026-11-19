@@ -66,7 +66,7 @@ const FINISH_TOLERANCE_M = 0.5;
 
 /** What the rules need to know about the runner beyond the activity itself. */
 /**
- * The moving time an untimed run gets: the race's slowest valid pace (30:00 a mile by
+ * The moving time an untimed run gets: the race's slowest valid pace (35:00 a mile by
  * default; anything slower is already flagged as slower than a walk). The miles count in
  * full, and since no accepted run is slower, leaving the time out can't help anyone toward
  * Fastest 1,000.
