@@ -1,7 +1,7 @@
 import { finishPlan, formatMiles } from '@1k/core';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, View } from 'react-native';
 
 import { AdminLink } from '@/components/admin-link';
 import { Card } from '@/components/card';
@@ -11,7 +11,7 @@ import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { useActiveRace } from '@/lib/active-race';
 import { canReview, usePendingReviews, useTurnedDown } from '@/lib/admin';
-import { useAuth } from '@/lib/auth';
+import { signOut, signOutBlocker, useAuth } from '@/lib/auth';
 import { resetTour } from '@/lib/onboarding';
 import { useRunnerStats } from '@/lib/race-stats';
 import { useStandings } from '@/lib/races';
@@ -82,7 +82,7 @@ export default function MyRace() {
         </Card>
       )}
       {race && stats && <RaceStatsView stats={stats} name="You" isMe goalMiles={goalMilesOf(race.goal_m)} />}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: Space.lg }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: Space.lg }}>
         <TextLink title="How the race works" onPress={() => router.push('/rules')} />
         {race && session && (
           <TextLink
@@ -93,9 +93,34 @@ export default function MyRace() {
             }}
           />
         )}
+        {session && <TextLink title="Sign out" onPress={confirmSignOut} />}
       </View>
     </Screen>
   );
+}
+
+function confirmSignOut() {
+  const blocker = signOutBlocker();
+  if (blocker === 'recording') {
+    return Alert.alert('Finish your run first', 'You’re in the middle of a run. Finish it, then sign out.');
+  }
+  if (blocker === 'uploading') {
+    return Alert.alert(
+      'Your run hasn’t uploaded yet',
+      'Open Home with a signal so it can upload, then sign out. Otherwise it could end up on the wrong account.',
+    );
+  }
+  Alert.alert('Sign out?', 'Your runs and miles stay saved. Sign back in any time.', [
+    { text: 'Cancel', style: 'cancel' },
+    {
+      text: 'Sign out',
+      style: 'destructive',
+      onPress: () =>
+        signOut().catch((e: unknown) =>
+          Alert.alert('Couldn’t sign out', e instanceof Error ? e.message : 'Try again.'),
+        ),
+    },
+  ]);
 }
 
 function TextLink({ title, onPress }: { title: string; onPress: () => void }) {

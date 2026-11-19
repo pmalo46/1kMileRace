@@ -105,6 +105,24 @@ export async function registerForPush({ ask = false }: { ask?: boolean } = {}): 
 }
 
 /**
+ * Forgets this device's push token for the signed-in user, before they sign out, so their
+ * cheers and comments stop arriving on a phone they've left. The next person to sign in
+ * registers it again as theirs.
+ */
+export async function unregisterForPush(): Promise<void> {
+  if (!Notifications || inExpoGo) return;
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  if (!projectId) return;
+  try {
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    await supabase.from('push_tokens').delete().eq('token', token);
+  } catch (e) {
+    // Offline: the token moves to whoever signs in next anyway.
+    console.warn('Push unregistration failed:', e);
+  }
+}
+
+/**
  * The buzz and lock-screen notice when a run in progress reaches the finish line.
  * Called from the background location task, so it can't rely on the app being on screen.
  */
