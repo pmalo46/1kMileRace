@@ -1,13 +1,30 @@
 /**
  * Invite links. Messaging apps only make https links tappable, so an invite is
  * https://<this worker>/join/<code>: a small page that says whose race it is and opens the
- * app at Join with the code filled in (onekmiles://join?code=...).
+ * app at Join with the code filled in (onekmiles://join?code=...). For anyone without the
+ * app yet, it also links to the install for their phone.
  */
 
 interface Env {
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
+  /** Where Android phones get the app: the latest EAS preview APK. Optional. */
+  ANDROID_APP_URL?: string;
+  /** Where iPhones get the app: the TestFlight public link (or App Store link later). Optional. */
+  IOS_APP_URL?: string;
 }
+
+type Phone = 'android' | 'ios' | 'other';
+
+function phoneOf(request: Request): Phone {
+  const ua = request.headers.get('user-agent') ?? '';
+  if (/android/i.test(ua)) return 'android';
+  if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+  return 'other';
+}
+
+/** Only ever link out to an https address, whatever was put in the setting. */
+const httpsOrNull = (u: string | undefined) => (u && /^https:\/\/\S+$/.test(u.trim()) ? u.trim() : null);
 
 interface Preview {
   name: string;
@@ -29,7 +46,7 @@ export default {
 
     const code = normalize(match[1]!);
     const preview = await lookUp(env, code);
-    return page(invite(code, preview), preview ? 200 : 404);
+    return page(invite(code, preview, phoneOf(request), env), preview ? 200 : 404);
   },
 } satisfies ExportedHandler<Env>;
 
@@ -51,7 +68,7 @@ async function lookUp(env: Env, code: string): Promise<Preview | null> {
   }
 }
 
-function invite(code: string, p: Preview | null): string {
+function invite(code: string, p: Preview | null, phone: Phone, env: Env): string {
   const appLink = `onekmiles://join?code=${encodeURIComponent(code)}`;
   if (!p) {
     return `
@@ -71,7 +88,30 @@ function invite(code: string, p: Preview | null): string {
       <span class="label">Your code</span>
       <span class="code">${esc(display(code))}</span>
     </div>
-    <p class="muted">No app yet? Ask ${esc(p.organizer_name)} how to get it, then come back and tap the button, or type the code in Join a race.</p>`;
+    ${getTheApp(phone, p.organizer_name, env)}`;
+}
+
+/** The install, for whichever phone opened the link. On a computer, both. */
+function getTheApp(phone: Phone, organizer: string, env: Env): string {
+  const android = httpsOrNull(env.ANDROID_APP_URL);
+  const ios = httpsOrNull(env.IOS_APP_URL);
+  const then = 'Once it&apos;s installed, come back here and tap Open 1K Mile Race.';
+  const askFor = (what: string) => `ask ${esc(organizer)} for ${what}`;
+
+  const androidPart = android
+    ? `<a class="button secondary" href="${esc(android)}">Download for Android</a>
+       <p class="muted">Android will ask you to allow the install, since it isn&apos;t from the Play Store. ${then}</p>`
+    : `<p class="muted">On Android, ${askFor('the download link')}. ${then}</p>`;
+  const iosPart = ios
+    ? `<a class="button secondary" href="${esc(ios)}">Get it on iPhone</a>
+       <p class="muted">It installs through Apple&apos;s TestFlight app, which the link walks you through. ${then}</p>`
+    : `<p class="muted">On iPhone, ${askFor('a TestFlight invite')}. ${then}</p>`;
+
+  if (phone === 'android') return `<p class="label">No app yet?</p>${androidPart}`;
+  if (phone === 'ios') return `<p class="label">No app yet?</p>${iosPart}`;
+  return `<p class="label">No app yet?</p>
+    <p class="muted">Open this link on your phone. Or get the app first:</p>
+    ${androidPart}${iosPart}`;
 }
 
 function home(): string {
@@ -103,6 +143,7 @@ function page(body: string, status: number): Response {
   .muted { color:var(--muted); font-size:15px; }
   .button { display:block; text-align:center; text-decoration:none; color:#fff; font-weight:800; font-size:17px;
     padding:16px; border-radius:999px; background:linear-gradient(135deg,#FF4D6D,#FF8A3D,#FFC94A); }
+  .button.secondary { background:var(--surface); color:var(--text); border:1px solid var(--border); }
   .bib { background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden;
     display:flex; flex-direction:column; align-items:center; gap:4px; padding:0 16px 20px; }
   .bib::before { content:""; align-self:stretch; height:14px; margin:0 -16px 12px;
