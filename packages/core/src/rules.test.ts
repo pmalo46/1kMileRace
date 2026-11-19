@@ -78,9 +78,9 @@ describe("evaluateActivity", () => {
 
     const errands = run({
       distanceM: milesToMeters(1.2),
-      endedAt: new Date("2026-10-02T12:40:00Z"),
-      movingTimeS: 40 * 60,
-      elapsedTimeS: 40 * 60,
+      endedAt: new Date("2026-10-02T12:45:00Z"),
+      movingTimeS: 45 * 60,
+      elapsedTimeS: 45 * 60,
     });
     expect(codes(errands)).toEqual(["pace_too_slow"]);
   });
@@ -115,7 +115,7 @@ describe("evaluateActivity", () => {
   it("only queues runs that could put miles on the board that weren't run or walked", () => {
     // A slow watch walk and a stop-and-go outing keep their notes but count straight away.
     const slow = evaluateActivity(
-      run({ source: "health_connect", distanceM: milesToMeters(1.2), endedAt: new Date("2026-10-02T12:40:00Z"), movingTimeS: 40 * 60, elapsedTimeS: 40 * 60 }),
+      run({ source: "health_connect", distanceM: milesToMeters(1.2), endedAt: new Date("2026-10-02T12:45:00Z"), movingTimeS: 45 * 60, elapsedTimeS: 45 * 60 }),
       DEFAULT_RACE_RULES,
       now,
     );

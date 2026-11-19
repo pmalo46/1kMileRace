@@ -95,7 +95,7 @@ export const DEFAULT_RACE_RULES: RaceRules = {
   allowTreadmill: true,
   requireTreadmillPhoto: true,
   fastestPaceSecPerMile: 4 * 60,
-  slowestPaceSecPerMile: 30 * 60,
+  slowestPaceSecPerMile: 35 * 60,
   minMovingRatio: 0.7,
   lateLogDays: 7,
 };

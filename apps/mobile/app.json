@@ -95,7 +95,7 @@
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "1K Mile Race reads your runs and walks from Apple Health so the miles your watch records count in the race.",
-          "NSHealthUpdateUsageDescription": false,
+          "NSHealthUpdateUsageDescription": "1K Mile Race only reads from Apple Health. It never saves or changes your health data.",
           "background": false
         }
       ]
